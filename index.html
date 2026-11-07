@@ -96,14 +96,16 @@ code{background:var(--panel2);padding:1px 5px;border-radius:5px}
 <body>
 <div class="wrap">
   <header>
-    <h1>🎺 Trumpet <span>Coach</span></h1>
+    <h1 id="title">🎺 Trumpet <span>Coach</span></h1>
     <span id="micPill" class="pill">Mic off</span>
   </header>
+
+  <div class="seg" id="instrSeg" style="margin-bottom:14px"><button data-v="trumpet">🎺 Trumpet</button><button data-v="guitar">🎸 Electric guitar</button></div>
 
   <!-- Start mic -->
   <section class="card" id="startBox">
     <button class="btn primary" id="startBtn">🎤 Start listening</button>
-    <p>Allow microphone access, then play a note. Put your phone 1–2 feet from the bell.</p>
+    <p id="startTip">Allow microphone access, then play a note. Put your phone 1–2 feet from the bell.</p>
     <div id="micErr"></div>
   </section>
 
@@ -152,7 +154,7 @@ code{background:var(--panel2);padding:1px 5px;border-radius:5px}
   <details class="card" id="customCard">
     <summary>✍️ Add your own song</summary>
     <div class="inner">
-      <p class="help">Type the notes from your trumpet sheet music (as written on the page). Separate with spaces. Add <code>:2</code> for a 2-beat note, <code>:0.5</code> for a half beat. Sharps <code>#</code>, flats <code>b</code>.<br>Example: <code>C4 D4 E4:2 F#4 Bb4:0.5 C5:4</code></p>
+      <p class="help">Type the notes from your sheet music (as written on the page). Separate with spaces. Add <code>:2</code> for a 2-beat note, <code>:0.5</code> for a half beat. Sharps <code>#</code>, flats <code>b</code>.<br>Example: <code>C4 D4 E4:2 F#4 Bb4:0.5 C5:4</code></p>
       <input id="customName" placeholder="Song name" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px">
       <textarea id="customNotes" placeholder="C4 D4 E4 F4 G4:2"></textarea>
       <div class="err" id="customErr"></div>
@@ -164,7 +166,7 @@ code{background:var(--panel2);padding:1px 5px;border-radius:5px}
   <details class="card">
     <summary>🎯 Fingering chart</summary>
     <div class="inner">
-      <p class="help">Written notes for B♭ trumpet. ● = press that valve (1 is closest to you). Tap a note to hear it.</p>
+      <p class="help" id="chartHelp"></p>
       <div class="grid" id="chart"></div>
     </div>
   </details>
@@ -173,7 +175,7 @@ code{background:var(--panel2);padding:1px 5px;border-radius:5px}
   <details class="card">
     <summary>⚙️ Settings</summary>
     <div class="inner set">
-      <div>
+      <div id="trumpetRow">
         <label>My trumpet</label>
         <div class="seg" id="instSeg"><button data-v="2" class="on">B♭ trumpet (most common)</button><button data-v="0">C trumpet</button></div>
       </div>
@@ -211,14 +213,37 @@ const FING = {54:'123',55:'13',56:'23',57:'12',58:'1',59:'2',60:'0',61:'123',62:
 const SPELL = {54:'F#3',55:'G3',56:'G#3',57:'A3',58:'Bb3',59:'B3',60:'C4',61:'C#4',62:'D4',63:'Eb4',64:'E4',65:'F4',66:'F#4',67:'G4',68:'G#4',69:'A4',70:'Bb4',71:'B4',72:'C5',73:'C#5',74:'D5',75:'Eb5',76:'E5',77:'F5',78:'F#5',79:'G5',80:'G#5',81:'A5',82:'Bb5',83:'B5',84:'C6'};
 
 const SONGS = {
-  scaleUp:   {name:'C Major Scale — up', notes:'C4:2 D4:2 E4:2 F4:2 G4:2 A4:2 B4:2 C5:4'},
-  scaleBoth: {name:'C Major Scale — up & down', notes:'C4:2 D4:2 E4:2 F4:2 G4:2 A4:2 B4:2 C5:2 B4:2 A4:2 G4:2 F4:2 E4:2 D4:2 C4:4'},
-  ode:       {name:'Ode to Joy (Beethoven)', notes:'E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4:1.5 D4:0.5 D4:2 E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 D4:1.5 C4:0.5 C4:2'},
-  fanfare:   {name:'Starship Fanfare (original, space-movie style)', notes:'E4 G4 C5:2 D5 C5 G4:2 A4 G4 E4 F4 G4:4 E4 G4 C5:2 D5 E5 D5:2 C5 G4 E4 D4 C4:4'},
+  // Warm-ups
+  longTones: {only:'trumpet', g:'🔥 Warm-ups (start here)', name:'Comeback long tones', notes:'C4:4 D4:4 E4:4 F4:4 G4:4 F4:4 E4:4 D4:4 C4:4'},
+  gHighE:    {only:'guitar', g:'🔥 Warm-ups (start here)', name:'First notes: high E string (open, 1, 3)', notes:'E4:2 F4:2 G4:2 F4:2 E4:2 F4:2 G4:4'},
+  gB:        {only:'guitar', g:'🔥 Warm-ups (start here)', name:'B string: B, C, D', notes:'B3:2 C4:2 D4:2 C4:2 B3:2 C4:2 D4:4'},
+  gBoth:     {only:'guitar', g:'🔥 Warm-ups (start here)', name:'B + high E strings together', notes:'B3 C4 D4 E4 F4 G4:2 G4 F4 E4 D4 C4 B3:2'},
+  slurs:     {only:'trumpet', g:'🔥 Warm-ups (start here)', name:'Lip slurs (same valves, change the buzz)', notes:'C4:2 G4:2 C4:4 B3:2 F#4:2 B3:4 Bb3:2 F4:2 Bb3:4 C4:2 G4:2 C5:2 G4:2 C4:4'},
+  scaleUp:   {g:'🔥 Warm-ups (start here)', name:'C Major Scale — up', notes:'C4:2 D4:2 E4:2 F4:2 G4:2 A4:2 B4:2 C5:4'},
+  scaleBoth: {g:'🔥 Warm-ups (start here)', name:'C Major Scale — up & down', notes:'C4:2 D4:2 E4:2 F4:2 G4:2 A4:2 B4:2 C5:2 B4:2 A4:2 G4:2 F4:2 E4:2 D4:2 C4:4'},
+  // Easy
+  hcb:       {g:'⭐ Easy (C to G)', name:'Hot Cross Buns', notes:'E4 D4 C4:2 E4 D4 C4:2 C4:0.5 C4:0.5 C4:0.5 C4:0.5 D4:0.5 D4:0.5 D4:0.5 D4:0.5 E4 D4 C4:2'},
+  mary:      {g:'⭐ Easy (C to G)', name:'Mary Had a Little Lamb', notes:'E4 D4 C4 D4 E4 E4 E4:2 D4 D4 D4:2 E4 G4 G4:2 E4 D4 C4 D4 E4 E4 E4 E4 D4 D4 E4 D4 C4:4'},
+  twinkle:   {g:'⭐ Easy (C to G)', name:'Twinkle Twinkle Little Star', notes:'C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2 G4 G4 F4 F4 E4 E4 D4:2 G4 G4 F4 F4 E4 E4 D4:2 C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2'},
+  ode:       {g:'⭐ Easy (C to G)', name:'Ode to Joy (Beethoven)', notes:'E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4:1.5 D4:0.5 D4:2 E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 D4:1.5 C4:0.5 C4:2'},
+  jingle:    {g:'⭐ Easy (C to G)', name:'Jingle Bells', notes:'E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4:1.5 D4:0.5 E4:4 F4 F4 F4:1.5 F4:0.5 F4 E4 E4 E4:0.5 E4:0.5 E4 D4 D4 E4 D4:2 G4:2 E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4:1.5 D4:0.5 E4:4 F4 F4 F4 F4 F4 E4 E4 E4:0.5 E4:0.5 G4 G4 F4 D4 C4:4'},
+  saints:    {g:'⭐ Easy (C to G)', name:'When the Saints Go Marching In', notes:'C4 E4 F4 G4:4 C4 E4 F4 G4:4 C4 E4 F4 G4:2 E4:2 C4:2 E4:2 D4:4 E4 E4 D4 C4:3 C4 E4:2 G4:2 G4 F4:3 E4 F4 G4:2 E4:2 C4:2 D4:2 C4:4'},
+  // Medium
+  bday:      {g:'🎵 Medium', name:'Happy Birthday', notes:'C4:0.75 C4:0.25 D4 C4 F4 E4:2 C4:0.75 C4:0.25 D4 C4 G4 F4:2 C4:0.75 C4:0.25 C5 A4 F4 E4 D4:2 Bb4:0.75 Bb4:0.25 A4 F4 G4 F4:2'},
+  susanna:   {g:'🎵 Medium', name:'Oh! Susanna', notes:'C4:0.5 D4:0.5 E4 G4 G4:1.5 A4:0.5 G4 E4 C4:1.5 D4:0.5 E4 E4 D4 C4 D4:3 C4:0.5 D4:0.5 E4 G4 G4:1.5 A4:0.5 G4 E4 C4:1.5 D4:0.5 E4 E4 D4 D4 C4:3'},
+  yankee:    {g:'🎵 Medium', name:'Yankee Doodle', notes:'C4 C4 D4 E4 C4 E4 D4 G3 C4 C4 D4 E4 C4:2 B3:2 C4 C4 D4 E4 F4 E4 D4 C4 B3 G3 A3 B3 C4:2 C4:2'},
+  grace:     {g:'🎵 Medium', name:'Amazing Grace', notes:'C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 F4:2 D4 C4:2 C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 C5:3 A4 C5:1.5 A4:0.5 C5:0.5 A4:0.5 F4:2 C4 D4:1.5 F4:0.5 F4:0.5 D4:0.5 C4:2 C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 F4:3'},
+  cucaracha: {g:'🎵 Medium', name:'La Cucaracha', notes:'C4:0.5 C4:0.5 C4:0.5 F4:1.5 A4 C4:0.5 C4:0.5 C4:0.5 F4:1.5 A4:2 F4 F4:0.5 E4:0.5 E4:0.5 D4:0.5 D4:0.5 C4:2 C4:0.5 C4:0.5 C4:0.5 E4:1.5 G4 C4:0.5 C4:0.5 C4:0.5 E4:1.5 G4:2 C5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 F4:2'},
+  cancan:    {g:'🎵 Medium', name:'Can-Can (Offenbach)', notes:'C4:2 D4:0.5 F4:0.5 E4:0.5 D4:0.5 G4 G4 G4:0.5 A4:0.5 E4:0.5 F4:0.5 D4 D4 D4:0.5 F4:0.5 E4:0.5 D4:0.5 C4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 F4:0.5 E4:0.5 D4:0.5 C4:2 D4:0.5 F4:0.5 E4:0.5 D4:0.5 G4 G4 G4:0.5 A4:0.5 E4:0.5 F4:0.5 D4 D4 D4:0.5 F4:0.5 E4:0.5 D4:0.5 C4 G4 C4:2'},
+  charge:    {g:'🎵 Medium', name:'Charge! (stadium fanfare)', notes:'C4:0.67 F4:0.67 A4:0.67 C5:1.5 A4:0.5 C5:3'},
+  fanfare:   {g:'🎵 Medium', name:'Starship Fanfare (original by Claude)', notes:'E4 G4 C5:2 D5 C5 G4:2 A4 G4 E4 F4 G4:4 E4 G4 C5:2 D5 E5 D5:2 C5 G4 E4 D4 C4:4'},
+  // Challenge
+  mountain:  {g:'🏆 Challenge', name:'In the Hall of the Mountain King (Grieg)', notes:'E4 F#4 G4 A4 B4 G4 B4:2 A#4 F#4 A#4:2 A4 F4 A4:2 E4 F#4 G4 A4 B4 G4 B4 E5 D5 B4 G4 B4 D5:4'},
+  taps:      {g:'🏆 Challenge', name:'Taps (all open notes, goes high)', notes:'G4:0.75 G4:0.25 C5:3 G4:0.75 C5:0.25 E5:3 G4:0.5 C5:0.5 E5:2 G4:0.5 C5:0.5 E5:2 G4:0.5 C5:0.5 E5:4 C5:0.75 E5:0.25 G5:3 E5 C5 G4:3 G4:0.75 G4:0.25 C5:4'},
 };
 
 // ---------- settings ----------
-const S = {inst:2, tol:40, sens:3, hold:0.35, bpm:90, chime:true, A4:440};
+const S = {instrument:'trumpet', inst:2, tol:40, sens:3, hold:0.35, bpm:90, chime:true, A4:440};
 const store = {
   get(k){ try{ return JSON.parse(localStorage.getItem('tc_'+k)); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem('tc_'+k, JSON.stringify(v)); }catch(e){} }
@@ -268,6 +293,28 @@ function valvesSVG(f){
   });
   return `<svg viewBox="0 0 140 46" width="140" height="46">${g}</svg><div class="hint">${f==='0'?'Open — no valves':'Press valve'+(f.length>1?'s ':' ')+f.split('').join(' + ')}</div>`;
 }
+const GSTR=[40,45,50,55,59,64], GNAME=['low E (6th string)','A (5th string)','D (4th string)','G (3rd string)','B (2nd string)','high E (1st string)'];
+function gpos(m){
+  let best=null;
+  GSTR.forEach((o,s)=>{ const f=m-o; if(f<0||f>17) return; const score=(f<=4?0:100)+f*2-(f<=4?s:0);
+    if(!best||score<best.score) best={s,f,score}; });
+  return best;
+}
+const FINGER=['open string','index finger','middle finger','ring finger','pinky'];
+const gWords = m => { const p=gpos(m); if(!p) return ''; return p.f===0 ? GNAME[p.s]+', open' : GNAME[p.s]+', fret '+p.f; };
+function fretSVG(m){
+  const p=gpos(m); if(!p) return '<div class="hint">Out of guitar range</div>';
+  const start = p.f<=4 ? 0 : p.f-2, n=5, W=190, x0=18, fw=(W-x0-6)/n, y=i=>6+(5-i)*9;
+  let g='';
+  if(start===0) g+=`<rect x="${x0-3}" y="4" width="4" height="49" fill="#ddd"/>`;
+  for(let k=0;k<=n;k++) g+=`<line x1="${x0+k*fw}" x2="${x0+k*fw}" y1="5" y2="52" stroke="#4a5786" stroke-width="1.5"/>`;
+  for(let i=0;i<6;i++) g+=`<line x1="${x0}" x2="${W-6}" y1="${y(i)}" y2="${y(i)}" stroke="#93a0c4" stroke-width="${1+(5-i)*0.25}"/>`;
+  if(p.f===0) g+=`<circle cx="${x0-10}" cy="${y(p.s)}" r="5" fill="none" stroke="#f2b33d" stroke-width="2.5"/>`;
+  else g+=`<circle cx="${x0+(p.f-start-0.5)*fw}" cy="${y(p.s)}" r="7" fill="#f2b33d"/><text x="${x0+(p.f-start-0.5)*fw}" y="${y(p.s)+4}" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1200">${p.f}</text>`;
+  if(start>0) g+=`<text x="${x0}" y="64" font-size="10" fill="#93a0c4">fret ${start+1}</text>`;
+  return `<svg viewBox="0 0 ${W} 66" style="width:100%;max-width:${W}px;height:auto;display:block">${g}</svg><div class="hint">${gWords(m)}</div>`;
+}
+const fingerHint = m => { const p=gpos(m); if(!p) return ''; return p.f===0?'Pluck it open, no fretting':p.f<=4?'Use your '+FINGER[p.f]+', press just behind the fret':'Slide your hand up the neck to fret '+p.f; };
 const lipHint = m => m<62?'Lips: relaxed, low buzz':m<70?'Lips: medium buzz':m<77?'Lips: firmer, faster air':'Lips: tight, fast air';
 
 // ---------- audio ----------
@@ -276,6 +323,7 @@ const getCtx = () => { if(!ctx) ctx = new (window.AudioContext||window.webkitAud
 function tone(concertMidi, start, dur, vol=0.16, dest){
   const c=getCtx(), f=S.A4*Math.pow(2,(concertMidi-69)/12);
   const o=c.createOscillator(), o2=c.createOscillator(), lp=c.createBiquadFilter(), g=c.createGain();
+  if(isGtr()) return pluck(f, start, dur, vol*1.4, dest);
   o.type='sawtooth'; o2.type='square'; o.frequency.value=f; o2.frequency.value=f*1.003;
   lp.type='lowpass'; lp.frequency.value=Math.min(2600, f*5); lp.Q.value=1.2;
   const m2=c.createGain(); m2.gain.value=0.35;
@@ -287,14 +335,25 @@ function tone(concertMidi, start, dur, vol=0.16, dest){
   g.gain.exponentialRampToValueAtTime(0.0001,start+dur);
   o.start(start); o2.start(start); o.stop(start+dur+0.02); o2.stop(start+dur+0.02);
 }
+function pluck(f, start, dur, vol, dest){
+  const c=getCtx(), o=c.createOscillator(), o2=c.createOscillator(), lp=c.createBiquadFilter(), g=c.createGain(), sh=c.createWaveShaper();
+  const curve=new Float32Array(256); for(let i=0;i<256;i++){ const x=i/128-1; curve[i]=Math.tanh(x*2.5); } sh.curve=curve;
+  o.type='sawtooth'; o2.type='triangle'; o.frequency.value=f; o2.frequency.value=f*2.002;
+  lp.type='lowpass'; lp.Q.value=2; lp.frequency.setValueAtTime(Math.min(5000,f*10),start); lp.frequency.exponentialRampToValueAtTime(Math.max(300,f*2),start+Math.min(dur,0.8));
+  const m2=c.createGain(); m2.gain.value=0.3;
+  o.connect(sh); o2.connect(m2); m2.connect(sh); sh.connect(lp); lp.connect(g); g.connect(dest||c.destination);
+  g.gain.setValueAtTime(0.0001,start); g.gain.exponentialRampToValueAtTime(vol,start+0.005);
+  g.gain.exponentialRampToValueAtTime(vol*0.25,start+Math.max(0.1,dur*0.85)); g.gain.exponentialRampToValueAtTime(0.0001,start+dur);
+  o.start(start); o2.start(start); o.stop(start+dur+0.02); o2.stop(start+dur+0.02);
+}
 function chime(){
   if(!S.chime) return;
   const c=getCtx(), t=c.currentTime;
   [1568,2093].forEach((f,i)=>{ const o=c.createOscillator(), g=c.createGain(); o.type='sine'; o.frequency.value=f;
-    o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(0.0001,t+i*0.07);
-    g.gain.exponentialRampToValueAtTime(0.08,t+i*0.07+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+i*0.07+0.18);
-    o.start(t+i*0.07); o.stop(t+i*0.07+0.2); });
-  ignoreUntil = performance.now()+300;
+    o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(0.0001,t+i*0.05);
+    g.gain.exponentialRampToValueAtTime(0.07,t+i*0.05+0.008); g.gain.exponentialRampToValueAtTime(0.0001,t+i*0.05+0.09);
+    o.start(t+i*0.05); o.stop(t+i*0.05+0.1); });
+  ignoreUntil = performance.now()+170;
 }
 
 async function startMic(){
@@ -304,7 +363,7 @@ async function startMic(){
     getCtx();
     const stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     const src = ctx.createMediaStreamSource(stream);
-    analyser = ctx.createAnalyser(); analyser.fftSize=2048; src.connect(analyser);
+    analyser = ctx.createAnalyser(); analyser.fftSize=4096; src.connect(analyser);
     buf = new Float32Array(analyser.fftSize);
     running=true;
     $('startBox').style.display='none';
@@ -320,13 +379,17 @@ async function startMic(){
 }
 
 // YIN pitch detection
-const yd = new Float32Array(2048);
+const yd = new Float32Array(4096);
+const isGtr = () => S.instrument==='guitar';
+const off = () => isGtr() ? 0 : S.inst;
 function detect(b, sr){
-  let rms=0; for(let i=0;i<b.length;i++) rms+=b[i]*b[i]; rms=Math.sqrt(rms/b.length);
+  const W=1024, minT=Math.floor(sr/1300), maxT=Math.min(Math.floor(sr/(isGtr()?75:130)), b.length-W-1);
+  // use the most recent audio so note changes and re-attacks register quickly
+  let rms=0; for(let i=b.length-W;i<b.length;i++) rms+=b[i]*b[i]; rms=Math.sqrt(rms/W);
   if(rms<gateFor(S.sens)) return {f:-1,rms};
-  const W=1024, minT=Math.floor(sr/1300), maxT=Math.min(Math.floor(sr/130), b.length-W-1);
+  const o=b.length-W-maxT-1;
   let run=0; yd[0]=1;
-  for(let t=1;t<=maxT;t++){ let s=0; for(let j=0;j<W;j++){ const d=b[j]-b[j+t]; s+=d*d; } run+=s; yd[t]= run? s*t/run : 1; }
+  for(let t=1;t<=maxT;t++){ let s=0; for(let j=o;j<o+W;j++){ const d=b[j]-b[j+t]; s+=d*d; } run+=s; yd[t]= run? s*t/run : 1; }
   let found=-1;
   for(let t=minT;t<=maxT;t++){ if(yd[t]<0.15){ while(t+1<=maxT && yd[t+1]<yd[t]) t++; found=t; break; } }
   if(found<0){ let best=minT; for(let t=minT;t<=maxT;t++) if(yd[t]<yd[best]) best=t; if(yd[best]<0.3) found=best; else return {f:-1,rms}; }
@@ -350,7 +413,7 @@ function loop(){
   else{
     const f=median(hist);
     const concert = 69+12*Math.log2(f/S.A4);
-    const written = concert + S.inst;
+    const written = concert + off();
     showLive(written, concert, f);
     tick(written, r.rms, now);
   }
@@ -363,7 +426,8 @@ function showLive(written, concert, f){
   const wm=Math.round(written), cents=Math.round((written-wm)*100);
   const nm=NAMES[((wm%12)+12)%12], oct=Math.floor(wm/12)-1;
   $('bigNote').innerHTML = nm+'<small>'+oct+'</small>';
-  $('liveSub').textContent = (S.inst? 'Sounds as concert '+nameOf(Math.round(concert))+' · ' : '') + f.toFixed(1)+' Hz' + (FING[wm]!=null? ' · valves: '+(FING[wm]==='0'?'open':FING[wm].split('').join('-')) : '');
+  $('liveSub').textContent = isGtr() ? f.toFixed(1)+' Hz' + (gpos(wm)? ' · '+gWords(wm) : '')
+    : (S.inst? 'Sounds as concert '+nameOf(Math.round(concert))+' · ' : '') + f.toFixed(1)+' Hz' + (FING[wm]!=null? ' · valves: '+(FING[wm]==='0'?'open':FING[wm].split('').join('-')) : '');
   $('mk').style.left = (50+Math.max(-50,Math.min(50,cents)))+'%';
   $('centsLbl').textContent = Math.abs(cents)<=10 ? 'in tune ✓' : (cents>0?'+':'')+cents+' cents';
   document.querySelectorAll('.cell').forEach(c=>c.classList.toggle('hl', +c.dataset.m===wm));
@@ -372,7 +436,7 @@ function showLive(written, concert, f){
 // ---------- practice ----------
 const P = {key:'scaleUp', notes:[], idx:0, holdStart:0, needRelease:false, lastMidi:null, peak:0, startT:0, misses:0, done:false};
 const cur = () => P.notes[Math.min(P.idx, P.notes.length-1)] || {label:'–',midi:60,step:28,acc:0};
-const fingerWords = m => FING[m]==null ? '' : FING[m]==='0' ? 'open (no valves)' : 'valves '+FING[m].split('').join(' + ');
+const fingerWords = m => isGtr() ? gWords(m) : FING[m]==null ? '' : FING[m]==='0' ? 'open (no valves)' : 'valves '+FING[m].split('').join(' + ');
 
 function loadSong(key){
   P.key=key; store.set('song', key);
@@ -394,8 +458,8 @@ function renderTarget(){
   const n=cur();
   $('tName').textContent=n.label;
   $('staff').innerHTML=staffSVG(n);
-  $('valves').innerHTML=valvesSVG(FING[n.midi]);
-  $('lipHint').textContent=lipHint(n.midi);
+  $('valves').innerHTML= isGtr() ? fretSVG(n.midi) : valvesSVG(FING[n.midi]);
+  $('lipHint').textContent= isGtr() ? fingerHint(n.midi) : lipHint(n.midi);
   const strip=$('strip');
   strip.innerHTML = P.notes.map((x,i)=>`<div class="chip ${i<P.idx?'done':i===P.idx&&!P.done?'cur':''}" data-i="${i}">${x.label}</div>`).join('');
   const c=strip.querySelector('.cur'); if(c) strip.scrollLeft = c.offsetLeft - strip.clientWidth/2 + c.clientWidth/2;
@@ -411,8 +475,10 @@ function tick(written, rms, now){
   if(!P.notes.length || P.done || playing) return;
   const t=cur();
   if(P.needRelease){
-    if(written==null || rms < P.peak*0.45 || Math.abs(written-P.lastMidi)>0.6) P.needRelease=false;
-    else { setFeedback('✓ Nice! Tongue the next note ('+t.label+')', 'good'); return; }
+    P.minRms=Math.min(P.minRms, rms);
+    const newAttack = isGtr() ? (rms > P.minRms*2 && rms > gateFor(S.sens)*2) : rms < P.peak*0.45;
+    if(written==null || newAttack || Math.abs(written-P.lastMidi)>0.6) P.needRelease=false;
+    else { setFeedback('✓ Nice! '+(isGtr()?'Pluck':'Tongue')+' the next note ('+t.label+')', 'good'); return; }
   }
   if(written==null){ P.holdStart=0; setHold(0); wasWrong=false; if(running) setFeedback('Play '+t.label+' — '+fingerWords(t.midi), ''); return; }
   if(!P.startT) P.startT=now;
@@ -422,7 +488,7 @@ function tick(written, rms, now){
     P.peak=Math.max(P.peak, rms);
     const p=(now-P.holdStart)/(S.hold*1000);
     setHold(p);
-    setFeedback(Math.abs(diff)<=12 ? '🎯 In tune — hold it…' : diff>0 ? 'Right note, a little sharp — relax slightly' : 'Right note, a little flat — more air support', 'good');
+    setFeedback(Math.abs(diff)<=12 ? '🎯 In tune — hold it…' : isGtr() ? (diff>0?'Right note, a little sharp — press lighter / tune down':'Right note, a little flat — tune up a bit') : diff>0 ? 'Right note, a little sharp — relax slightly' : 'Right note, a little flat — more air support', 'good');
     if(p>=1) hit(t);
   } else {
     P.holdStart=0; setHold(0);
@@ -431,14 +497,14 @@ function tick(written, rms, now){
     if(now-lastWrongAt>700){ P.misses++; lastWrongAt=now+1e9; }
     let msg;
     if(semis!==0 && semis%12===0) msg = semis>0 ? `That's ${heard} — same note, one octave too high. Relax your lips ↓` : `That's ${heard} — same note, one octave too low. Firmer lips, faster air ↑`;
-    else if(FING[Math.round(written)]===FING[t.midi]) msg = `Valves are right! You're on ${heard} — buzz ${semis>0?'lower ↓ (looser lips)':'higher ↑ (firmer lips)'}`;
+    else if(!isGtr() && FING[Math.round(written)]===FING[t.midi]) msg = `Valves are right! You're on ${heard} — buzz ${semis>0?'lower ↓ (looser lips)':'higher ↑ (firmer lips)'}`;
     else msg = `You're on ${heard} — go ${semis>0?'lower ↓':'higher ↑'} · use ${fingerWords(t.midi)}`;
     setFeedback(msg,'bad');
   }
 }
 function hit(t){
   chime(); wasWrong=false;
-  P.needRelease=true; P.lastMidi=t.midi; P.holdStart=0;
+  P.needRelease=true; P.lastMidi=t.midi; P.holdStart=0; P.minRms=1;
   P.idx++;
   $('practice').classList.remove('flash'); void $('practice').offsetWidth; $('practice').classList.add('flash');
   if(P.idx>=P.notes.length){
@@ -463,7 +529,7 @@ function listen(){
   bus=c.createGain(); bus.connect(c.destination);
   P.notes.forEach((n,i)=>{
     const d=n.beats*beat;
-    tone(n.midi - S.inst, t, Math.max(0.12,d*0.92), 0.16, bus);
+    tone(n.midi - off(), t, Math.max(0.12,d*0.92), 0.16, bus);
     playTimers.push(setTimeout(()=>{
       document.querySelectorAll('#strip .chip').forEach(ch=>ch.classList.toggle('play', +ch.dataset.i===i));
       const ch=document.querySelector(`#strip .chip[data-i="${i}"]`); if(ch){ const s=$('strip'); s.scrollLeft=ch.offsetLeft-s.clientWidth/2; }
@@ -480,22 +546,32 @@ function stopListen(){
   if(bus){ try{ bus.gain.setTargetAtTime(0, ctx.currentTime, 0.02); const b=bus; setTimeout(()=>b.disconnect(),200); }catch(e){} bus=null; }
   renderTarget();
 }
-function hear(m){ const c=getCtx(); tone(m - S.inst, c.currentTime+0.02, 1.0); ignoreUntil=performance.now()+1250; }
+function hear(m){ const c=getCtx(); tone(m - off(), c.currentTime+0.02, 1.0); ignoreUntil=performance.now()+1250; }
 
 // ---------- UI wiring ----------
 function buildSongSelect(){
   const custom = store.get('custom');
-  const opts = Object.entries(SONGS).map(([k,v])=>`<option value="${k}">${v.name}</option>`);
-  opts.push(`<option value="custom">✍️ ${custom&&custom.name? custom.name.replace(/</g,'&lt;') : 'My Song (add below)'}</option>`);
-  $('songSel').innerHTML=opts.join('');
+  const groups={};
+  Object.entries(SONGS).filter(([k,v])=>!v.only||v.only===S.instrument).forEach(([k,v])=>{ (groups[v.g]=groups[v.g]||[]).push(`<option value="${k}">${v.name}</option>`); });
+  let html=Object.entries(groups).map(([g,o])=>`<optgroup label="${g}">${o.join('')}</optgroup>`).join('');
+  html+=`<optgroup label="✍️ Your songs"><option value="custom">${custom&&custom.name? custom.name.replace(/</g,'&lt;') : 'My Song (add below)'}</option></optgroup>`;
+  $('songSel').innerHTML=html;
 }
 function buildChart(){
+  if(isGtr()){
+    $('chartHelp').textContent='Where each note is on the guitar (standard tuning, lowest fret). Tap a note to hear it.';
+    const ms=[]; for(let m=52;m<=81;m++) ms.push(m);
+    $('chart').innerHTML = ms.map(m=>{ const p=gpos(m), sn=['E','A','D','G','B','e'][p.s];
+      return `<div class="cell" data-m="${m}"><b>${nameOf(m)}</b><div class="dots">${sn} · ${p.f===0?'open':'fr '+p.f}</div></div>`; }).join('');
+    return;
+  }
+  $('chartHelp').textContent='Written notes for B♭ trumpet. ● = press that valve (1 is closest to you). Tap a note to hear it.';
   $('chart').innerHTML = Object.keys(FING).map(m=>{
     const f=FING[m], dots=[1,2,3].map(v=>f.includes(String(v))?'●':'○').join('');
     return `<div class="cell" data-m="${m}"><b>${SPELL[m].replace('#','♯').replace(/^([A-G])b/,'$1♭')}</b><div class="dots">${dots}</div></div>`;
   }).join('');
-  $('chart').addEventListener('click',e=>{ const c=e.target.closest('.cell'); if(c) hear(+c.dataset.m); });
 }
+$('chart').addEventListener('click',e=>{ const c=e.target.closest('.cell'); if(c) hear(+c.dataset.m); });
 function initSettings(){
   const seg=$('instSeg');
   seg.querySelectorAll('button').forEach(b=>{ b.classList.toggle('on', +b.dataset.v===S.inst);
@@ -530,8 +606,22 @@ $('saveCustom').onclick=()=>{
 };
 const savedCustom=store.get('custom'); if(savedCustom){ $('customName').value=savedCustom.name||''; $('customNotes').value=savedCustom.notes||''; }
 
-buildSongSelect(); buildChart(); initSettings();
-const startKey = store.get('song'); const k = (startKey && (SONGS[startKey]||startKey==='custom')) ? startKey : 'scaleUp';
+function applyInstrument(){
+  const g=isGtr();
+  $('instrSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.v===S.instrument));
+  $('title').innerHTML = g ? '🎸 Guitar <span>Coach</span>' : '🎺 Trumpet <span>Coach</span>';
+  document.title = g ? 'Guitar Coach' : 'Trumpet Coach';
+  $('startTip').textContent = g ? 'Allow microphone access, then pluck a note. Play through an amp (or turn it up) with your phone 1–3 feet away.' : 'Allow microphone access, then play a note. Put your phone 1–2 feet from the bell.';
+  $('trumpetRow').style.display = g ? 'none' : '';
+  buildSongSelect(); buildChart();
+}
+$('instrSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b||b.dataset.v===S.instrument) return;
+  if(playing) stopListen(); S.instrument=b.dataset.v; saveSettings(); applyInstrument();
+  const ok = P.key==='custom' || (SONGS[P.key] && (!SONGS[P.key].only || SONGS[P.key].only===S.instrument));
+  const k = ok ? P.key : 'scaleUp';
+  $('songSel').value=k; loadSong(k); });
+applyInstrument(); initSettings();
+const startKey = store.get('song'); const k = (startKey && ((SONGS[startKey] && (!SONGS[startKey].only||SONGS[startKey].only===S.instrument))||startKey==='custom')) ? startKey : 'scaleUp';
 $('songSel').value=k; loadSong(k);
 })();
 </script>
