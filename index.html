@@ -90,6 +90,13 @@ code{background:var(--panel2);padding:1px 5px;border-radius:5px}
 .set input[type=range]{width:100%;accent-color:var(--brass)}
 .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .seg button{flex:1;background:none;border:0;padding:9px;cursor:pointer;color:var(--muted)}
+.strs{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.strs button{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px 0;cursor:pointer;color:var(--text);font-weight:700;font-size:18px;line-height:1.1}
+.strs button small{display:block;font-size:11px;color:var(--muted);font-weight:500}
+.strs button.sel{border-color:var(--brass);background:#2b2412}
+.strs button.ok{border-color:#2b6b55;background:#173a2e;color:var(--good)}
+.tunerBig{text-align:center;font-size:54px;font-weight:700;margin-top:12px;line-height:1}
+.tunerBig.in{color:var(--good)}
 .seg button.on{background:var(--brass);color:#1a1200;font-weight:700}
 </style>
 </head>
@@ -121,6 +128,20 @@ code{background:var(--panel2);padding:1px 5px;border-radius:5px}
     </div>
     <div class="meter"><div class="mid"></div><div class="mk" id="mk"></div></div>
     <div class="meterLbl"><span>♭ flat</span><span id="centsLbl">in tune</span><span>sharp ♯</span></div>
+  </section>
+
+  <!-- Guitar tuner -->
+  <section class="card" id="tunerCard" style="display:none">
+    <h2>🎸 Guitar tuner</h2>
+    <div class="strs" id="strs"></div>
+    <div class="tunerBig" id="tBig">–</div>
+    <div class="meter"><div class="mid"></div><div class="mk" id="tmk"></div></div>
+    <div class="meterLbl"><span>♭ too low</span><span id="tCents">—</span><span>too high ♯</span></div>
+    <div class="feedback" id="tMsg">Start listening, then pluck one string at a time and let it ring.</div>
+    <div class="row" style="margin-top:10px;justify-content:space-between">
+      <label style="font-size:14px"><input type="checkbox" id="tAuto" checked> Auto-detect string</label>
+      <span class="help">Tap a string to hear it</span>
+    </div>
   </section>
 
   <!-- Practice -->
@@ -409,12 +430,13 @@ function loop(){
   if(now < ignoreUntil){ hist=[]; showSilence('🔊 Playing sound…'); requestAnimationFrame(loop); return; }
   if(r.f>0){ hist.push(r.f); if(hist.length>5) hist.shift(); silent=0; }
   else if(++silent>=3) hist=[];
-  if(!hist.length){ showSilence('Waiting for sound…'); tick(null, r.rms, now); }
+  if(!hist.length){ showSilence('Waiting for sound…'); tick(null, r.rms, now); tunerTick(null, now); }
   else{
     const f=median(hist);
     const concert = 69+12*Math.log2(f/S.A4);
     const written = concert + off();
     showLive(written, concert, f);
+    tunerTick(concert, now);
     tick(written, r.rms, now);
   }
   requestAnimationFrame(loop);
@@ -431,6 +453,34 @@ function showLive(written, concert, f){
   $('mk').style.left = (50+Math.max(-50,Math.min(50,cents)))+'%';
   $('centsLbl').textContent = Math.abs(cents)<=10 ? 'in tune ✓' : (cents>0?'+':'')+cents+' cents';
   document.querySelectorAll('.cell').forEach(c=>c.classList.toggle('hl', +c.dataset.m===wm));
+}
+
+// ---------- guitar tuner ----------
+const TSTR=[{n:'E',o:2,m:40,lbl:'6th'},{n:'A',o:2,m:45,lbl:'5th'},{n:'D',o:3,m:50,lbl:'4th'},{n:'G',o:3,m:55,lbl:'3rd'},{n:'B',o:3,m:59,lbl:'2nd'},{n:'E',o:4,m:64,lbl:'1st'}];
+const T={sel:0, inSince:0, ok:new Set()};
+function buildTuner(){
+  $('strs').innerHTML=TSTR.map((t,i)=>`<button data-i="${i}" class="${i===T.sel?'sel':''} ${T.ok.has(i)?'ok':''}">${T.ok.has(i)?'✓':t.n}<small>${t.lbl}</small></button>`).join('');
+}
+$('strs').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; T.sel=+b.dataset.i; $('tAuto').checked=false; T.inSince=0; buildTuner();
+  const c=getCtx(); pluck(S.A4*Math.pow(2,(TSTR[T.sel].m-69)/12), c.currentTime+0.02, 1.6, 0.22); ignoreUntil=performance.now()+1800; });
+function tunerTick(concert, now){
+  if(!isGtr()) return;
+  if(concert==null){ T.inSince=0; return; }
+  if($('tAuto').checked){ let best=0; TSTR.forEach((t,i)=>{ if(Math.abs(concert-t.m)<Math.abs(concert-TSTR[best].m)) best=i; });
+    if(best!==T.sel){ T.sel=best; T.inSince=0; buildTuner(); } }
+  const t=TSTR[T.sel], cents=Math.round((concert-t.m)*100), big=$('tBig');
+  big.textContent=t.n+(T.sel===5?' (high)':T.sel===0?' (low)':'');
+  $('tmk').style.left=(50+Math.max(-50,Math.min(50,cents)))+'%';
+  $('tCents').textContent=(cents>0?'+':'')+cents+' cents';
+  const inTune=Math.abs(cents)<=5;
+  big.classList.toggle('in', inTune);
+  let msg, cls;
+  if(inTune){ msg='✓ '+t.lbl+' string is in tune!'; cls='good'; if(!T.inSince) T.inSince=now; else if(now-T.inSince>600 && !T.ok.has(T.sel)){ T.ok.add(T.sel); buildTuner(); } }
+  else { T.inSince=0; cls='bad';
+    const far=Math.abs(cents)>100;
+    msg = cents<0 ? `Too low${far?' (a lot)':''} — tighten the ${t.lbl} string (turn the peg to raise pitch) ↑` : `Too high${far?' (a lot)':''} — loosen the ${t.lbl} string (lower the pitch) ↓`; }
+  if(T.ok.size===6 && inTune) msg='🎉 All 6 strings tuned — you’re ready to play!';
+  const m=$('tMsg'); m.textContent=msg; m.className='feedback '+cls;
 }
 
 // ---------- practice ----------
@@ -613,6 +663,7 @@ function applyInstrument(){
   document.title = g ? 'Guitar Coach' : 'Trumpet Coach';
   $('startTip').textContent = g ? 'Allow microphone access, then pluck a note. Play through an amp (or turn it up) with your phone 1–3 feet away.' : 'Allow microphone access, then play a note. Put your phone 1–2 feet from the bell.';
   $('trumpetRow').style.display = g ? 'none' : '';
+  $('tunerCard').style.display = g ? '' : 'none'; buildTuner();
   buildSongSelect(); buildChart();
 }
 $('instrSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b||b.dataset.v===S.instrument) return;
