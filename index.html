@@ -90,6 +90,13 @@ code{background:var(--panel2);padding:1px 5px;border-radius:5px}
 .set input[type=range]{width:100%;accent-color:var(--brass)}
 .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .seg button{flex:1;background:none;border:0;padding:9px;cursor:pointer;color:var(--muted)}
+.sheet{background:#f5f1e6;border-radius:14px;max-height:260px;overflow-y:auto;margin-top:8px;scroll-behavior:smooth}
+.sheet svg{display:block}
+.sheetHead{gap:8px;flex-wrap:wrap;margin-top:16px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;display:flex;justify-content:space-between}
+#hw{width:100%;height:290px;display:block;border-radius:14px;background:#0e1430;border:1px solid var(--line);touch-action:manipulation}
+.tempo{display:flex;align-items:center;gap:6px}
+.tempo span{min-width:68px;text-align:center;font-weight:700}
+.stars{font-size:34px;letter-spacing:4px}
 .strs{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .strs button{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px 0;cursor:pointer;color:var(--text);font-weight:700;font-size:18px;line-height:1.1}
 .strs button small{display:block;font-size:11px;color:var(--muted);font-weight:500}
@@ -148,6 +155,18 @@ code{background:var(--panel2);padding:1px 5px;border-radius:5px}
   <section class="card" id="practice">
     <h2>Practice</h2>
     <select id="songSel"></select>
+    <div class="seg" id="modeSeg" style="margin-top:10px"><button data-v="step">👣 Step by step</button><button data-v="play">🎮 Play along</button></div>
+    <div id="playUI" style="display:none;margin-top:12px">
+      <canvas id="hw"></canvas>
+      <div class="row" style="margin-top:10px;justify-content:space-between">
+        <button class="btn primary" id="playBtn">▶ Play</button>
+        <div class="tempo"><button class="btn small" id="bpmDn">−</button><span id="bpmShow">90 BPM</span><button class="btn small" id="bpmUp">+</button></div>
+        <label style="font-size:14px"><input type="checkbox" id="clickOn" checked> Metronome</label>
+      </div>
+      <div class="feedback" id="playMsg">Press ▶ Play. You get a count-in, then play each note as it hits the gold line.</div>
+      <div class="done-card" id="playDone"><div class="stars" id="pStars"></div><b id="pScore"></b><div class="help" id="pStats" style="margin-top:6px"></div></div>
+    </div>
+    <div id="stepUI">
     <div class="target">
       <div id="staff"></div>
       <div class="tInfo">
@@ -169,6 +188,9 @@ code{background:var(--panel2);padding:1px 5px;border-radius:5px}
       <button class="btn small" id="backBtn">⏮ Back</button>
       <button class="btn small" id="restartBtn">↺ Restart</button>
     </div>
+    </div>
+    <div class="sheetHead"><span>📄 Full sheet</span><span id="sheetHint">tap a note to jump</span></div>
+    <div class="sheet" id="sheet"></div>
   </section>
 
   <!-- Custom song -->
@@ -235,36 +257,36 @@ const SPELL = {54:'F#3',55:'G3',56:'G#3',57:'A3',58:'Bb3',59:'B3',60:'C4',61:'C#
 
 const SONGS = {
   // Warm-ups
-  longTones: {only:'trumpet', g:'🔥 Warm-ups (start here)', name:'Comeback long tones', notes:'C4:4 D4:4 E4:4 F4:4 G4:4 F4:4 E4:4 D4:4 C4:4'},
-  gHighE:    {only:'guitar', g:'🔥 Warm-ups (start here)', name:'First notes: high E string (open, 1, 3)', notes:'E4:2 F4:2 G4:2 F4:2 E4:2 F4:2 G4:4'},
-  gB:        {only:'guitar', g:'🔥 Warm-ups (start here)', name:'B string: B, C, D', notes:'B3:2 C4:2 D4:2 C4:2 B3:2 C4:2 D4:4'},
+  longTones: {ts:4, pickup:0, only:'trumpet', g:'🔥 Warm-ups (start here)', name:'Comeback long tones', notes:'C4:4 D4:4 E4:4 F4:4 G4:4 F4:4 E4:4 D4:4 C4:4'},
+  gHighE:    {ts:4, pickup:0, only:'guitar', g:'🔥 Warm-ups (start here)', name:'First notes: high E string (open, 1, 3)', notes:'E4:2 F4:2 G4:2 F4:2 E4:2 F4:2 G4:4'},
+  gB:        {ts:4, pickup:0, only:'guitar', g:'🔥 Warm-ups (start here)', name:'B string: B, C, D', notes:'B3:2 C4:2 D4:2 C4:2 B3:2 C4:2 D4:4'},
   gBoth:     {only:'guitar', g:'🔥 Warm-ups (start here)', name:'B + high E strings together', notes:'B3 C4 D4 E4 F4 G4:2 G4 F4 E4 D4 C4 B3:2'},
-  slurs:     {only:'trumpet', g:'🔥 Warm-ups (start here)', name:'Lip slurs (same valves, change the buzz)', notes:'C4:2 G4:2 C4:4 B3:2 F#4:2 B3:4 Bb3:2 F4:2 Bb3:4 C4:2 G4:2 C5:2 G4:2 C4:4'},
-  scaleUp:   {g:'🔥 Warm-ups (start here)', name:'C Major Scale — up', notes:'C4:2 D4:2 E4:2 F4:2 G4:2 A4:2 B4:2 C5:4'},
-  scaleBoth: {g:'🔥 Warm-ups (start here)', name:'C Major Scale — up & down', notes:'C4:2 D4:2 E4:2 F4:2 G4:2 A4:2 B4:2 C5:2 B4:2 A4:2 G4:2 F4:2 E4:2 D4:2 C4:4'},
+  slurs:     {ts:4, pickup:0, only:'trumpet', g:'🔥 Warm-ups (start here)', name:'Lip slurs (same valves, change the buzz)', notes:'C4:2 G4:2 C4:4 B3:2 F#4:2 B3:4 Bb3:2 F4:2 Bb3:4 C4:2 G4:2 C5:2 G4:2 C4:4'},
+  scaleUp:   {ts:4, pickup:0, g:'🔥 Warm-ups (start here)', name:'C Major Scale — up', notes:'C4:2 D4:2 E4:2 F4:2 G4:2 A4:2 B4:2 C5:4'},
+  scaleBoth: {ts:4, pickup:0, g:'🔥 Warm-ups (start here)', name:'C Major Scale — up & down', notes:'C4:2 D4:2 E4:2 F4:2 G4:2 A4:2 B4:2 C5:2 B4:2 A4:2 G4:2 F4:2 E4:2 D4:2 C4:4'},
   // Easy
-  hcb:       {g:'⭐ Easy (C to G)', name:'Hot Cross Buns', notes:'E4 D4 C4:2 E4 D4 C4:2 C4:0.5 C4:0.5 C4:0.5 C4:0.5 D4:0.5 D4:0.5 D4:0.5 D4:0.5 E4 D4 C4:2'},
-  mary:      {g:'⭐ Easy (C to G)', name:'Mary Had a Little Lamb', notes:'E4 D4 C4 D4 E4 E4 E4:2 D4 D4 D4:2 E4 G4 G4:2 E4 D4 C4 D4 E4 E4 E4 E4 D4 D4 E4 D4 C4:4'},
-  twinkle:   {g:'⭐ Easy (C to G)', name:'Twinkle Twinkle Little Star', notes:'C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2 G4 G4 F4 F4 E4 E4 D4:2 G4 G4 F4 F4 E4 E4 D4:2 C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2'},
-  ode:       {g:'⭐ Easy (C to G)', name:'Ode to Joy (Beethoven)', notes:'E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4:1.5 D4:0.5 D4:2 E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 D4:1.5 C4:0.5 C4:2'},
-  jingle:    {g:'⭐ Easy (C to G)', name:'Jingle Bells', notes:'E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4:1.5 D4:0.5 E4:4 F4 F4 F4:1.5 F4:0.5 F4 E4 E4 E4:0.5 E4:0.5 E4 D4 D4 E4 D4:2 G4:2 E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4:1.5 D4:0.5 E4:4 F4 F4 F4 F4 F4 E4 E4 E4:0.5 E4:0.5 G4 G4 F4 D4 C4:4'},
+  hcb:       {ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Hot Cross Buns', notes:'E4 D4 C4:2 E4 D4 C4:2 C4:0.5 C4:0.5 C4:0.5 C4:0.5 D4:0.5 D4:0.5 D4:0.5 D4:0.5 E4 D4 C4:2'},
+  mary:      {ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Mary Had a Little Lamb', notes:'E4 D4 C4 D4 E4 E4 E4:2 D4 D4 D4:2 E4 G4 G4:2 E4 D4 C4 D4 E4 E4 E4 E4 D4 D4 E4 D4 C4:4'},
+  twinkle:   {ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Twinkle Twinkle Little Star', notes:'C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2 G4 G4 F4 F4 E4 E4 D4:2 G4 G4 F4 F4 E4 E4 D4:2 C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2'},
+  ode:       {ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Ode to Joy (Beethoven)', notes:'E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4:1.5 D4:0.5 D4:2 E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 D4:1.5 C4:0.5 C4:2'},
+  jingle:    {ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Jingle Bells', notes:'E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4:1.5 D4:0.5 E4:4 F4 F4 F4:1.5 F4:0.5 F4 E4 E4 E4:0.5 E4:0.5 E4 D4 D4 E4 D4:2 G4:2 E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4:1.5 D4:0.5 E4:4 F4 F4 F4 F4 F4 E4 E4 E4:0.5 E4:0.5 G4 G4 F4 D4 C4:4'},
   saints:    {g:'⭐ Easy (C to G)', name:'When the Saints Go Marching In', notes:'C4 E4 F4 G4:4 C4 E4 F4 G4:4 C4 E4 F4 G4:2 E4:2 C4:2 E4:2 D4:4 E4 E4 D4 C4:3 C4 E4:2 G4:2 G4 F4:3 E4 F4 G4:2 E4:2 C4:2 D4:2 C4:4'},
   // Medium
-  bday:      {g:'🎵 Medium', name:'Happy Birthday', notes:'C4:0.75 C4:0.25 D4 C4 F4 E4:2 C4:0.75 C4:0.25 D4 C4 G4 F4:2 C4:0.75 C4:0.25 C5 A4 F4 E4 D4:2 Bb4:0.75 Bb4:0.25 A4 F4 G4 F4:2'},
-  susanna:   {g:'🎵 Medium', name:'Oh! Susanna', notes:'C4:0.5 D4:0.5 E4 G4 G4:1.5 A4:0.5 G4 E4 C4:1.5 D4:0.5 E4 E4 D4 C4 D4:3 C4:0.5 D4:0.5 E4 G4 G4:1.5 A4:0.5 G4 E4 C4:1.5 D4:0.5 E4 E4 D4 D4 C4:3'},
-  yankee:    {g:'🎵 Medium', name:'Yankee Doodle', notes:'C4 C4 D4 E4 C4 E4 D4 G3 C4 C4 D4 E4 C4:2 B3:2 C4 C4 D4 E4 F4 E4 D4 C4 B3 G3 A3 B3 C4:2 C4:2'},
-  grace:     {g:'🎵 Medium', name:'Amazing Grace', notes:'C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 F4:2 D4 C4:2 C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 C5:3 A4 C5:1.5 A4:0.5 C5:0.5 A4:0.5 F4:2 C4 D4:1.5 F4:0.5 F4:0.5 D4:0.5 C4:2 C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 F4:3'},
+  bday:      {ts:3, pickup:1, g:'🎵 Medium', name:'Happy Birthday', notes:'C4:0.75 C4:0.25 D4 C4 F4 E4:2 C4:0.75 C4:0.25 D4 C4 G4 F4:2 C4:0.75 C4:0.25 C5 A4 F4 E4 D4:2 Bb4:0.75 Bb4:0.25 A4 F4 G4 F4:2'},
+  susanna:   {ts:4, pickup:1, g:'🎵 Medium', name:'Oh! Susanna', notes:'C4:0.5 D4:0.5 E4 G4 G4:1.5 A4:0.5 G4 E4 C4:1.5 D4:0.5 E4 E4 D4 C4 D4:3 C4:0.5 D4:0.5 E4 G4 G4:1.5 A4:0.5 G4 E4 C4:1.5 D4:0.5 E4 E4 D4 D4 C4:3'},
+  yankee:    {ts:4, pickup:0, g:'🎵 Medium', name:'Yankee Doodle', notes:'C4 C4 D4 E4 C4 E4 D4 G3 C4 C4 D4 E4 C4:2 B3:2 C4 C4 D4 E4 F4 E4 D4 C4 B3 G3 A3 B3 C4:2 C4:2'},
+  grace:     {ts:3, pickup:1, g:'🎵 Medium', name:'Amazing Grace', notes:'C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 F4:2 D4 C4:2 C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 C5:5 A4 C5:2 A4:0.5 F4:0.5 A4:2 G4 F4:2 D4 C4:2 C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 F4:3'},
   cucaracha: {g:'🎵 Medium', name:'La Cucaracha', notes:'C4:0.5 C4:0.5 C4:0.5 F4:1.5 A4 C4:0.5 C4:0.5 C4:0.5 F4:1.5 A4:2 F4 F4:0.5 E4:0.5 E4:0.5 D4:0.5 D4:0.5 C4:2 C4:0.5 C4:0.5 C4:0.5 E4:1.5 G4 C4:0.5 C4:0.5 C4:0.5 E4:1.5 G4:2 C5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 F4:2'},
-  cancan:    {g:'🎵 Medium', name:'Can-Can (Offenbach)', notes:'C4:2 D4:0.5 F4:0.5 E4:0.5 D4:0.5 G4 G4 G4:0.5 A4:0.5 E4:0.5 F4:0.5 D4 D4 D4:0.5 F4:0.5 E4:0.5 D4:0.5 C4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 F4:0.5 E4:0.5 D4:0.5 C4:2 D4:0.5 F4:0.5 E4:0.5 D4:0.5 G4 G4 G4:0.5 A4:0.5 E4:0.5 F4:0.5 D4 D4 D4:0.5 F4:0.5 E4:0.5 D4:0.5 C4 G4 C4:2'},
+  cancan:    {ts:4, pickup:0, g:'🎵 Medium', name:'Can-Can (Offenbach)', notes:'C4:2 D4:0.5 F4:0.5 E4:0.5 D4:0.5 G4 G4 G4:0.5 A4:0.5 E4:0.5 F4:0.5 D4 D4 D4:0.5 F4:0.5 E4:0.5 D4:0.5 C4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 F4:0.5 E4:0.5 D4:0.5 C4:2 D4:0.5 F4:0.5 E4:0.5 D4:0.5 G4 G4 G4:0.5 A4:0.5 E4:0.5 F4:0.5 D4 D4 D4:0.5 F4:0.5 E4:0.5 D4:0.5 C4 G4 C4:2'},
   charge:    {g:'🎵 Medium', name:'Charge! (stadium fanfare)', notes:'C4:0.67 F4:0.67 A4:0.67 C5:1.5 A4:0.5 C5:3'},
-  fanfare:   {g:'🎵 Medium', name:'Starship Fanfare (original by Claude)', notes:'E4 G4 C5:2 D5 C5 G4:2 A4 G4 E4 F4 G4:4 E4 G4 C5:2 D5 E5 D5:2 C5 G4 E4 D4 C4:4'},
+  fanfare:   {ts:4, pickup:0, g:'🎵 Medium', name:'Starship Fanfare (original by Claude)', notes:'E4 G4 C5:2 D5 C5 G4:2 A4 G4 E4 F4 G4:4 E4 G4 C5:2 D5 E5 D5:2 C5 G4 E4 D4 C4:4'},
   // Challenge
-  mountain:  {g:'🏆 Challenge', name:'In the Hall of the Mountain King (Grieg)', notes:'E4 F#4 G4 A4 B4 G4 B4:2 A#4 F#4 A#4:2 A4 F4 A4:2 E4 F#4 G4 A4 B4 G4 B4 E5 D5 B4 G4 B4 D5:4'},
+  mountain:  {ts:4, pickup:0, g:'🏆 Challenge', name:'In the Hall of the Mountain King (Grieg)', notes:'E4 F#4 G4 A4 B4 G4 B4:2 A#4 F#4 A#4:2 A4 F4 A4:2 E4 F#4 G4 A4 B4 G4 B4 E5 D5 B4 G4 B4 D5:4'},
   taps:      {g:'🏆 Challenge', name:'Taps (all open notes, goes high)', notes:'G4:0.75 G4:0.25 C5:3 G4:0.75 C5:0.25 E5:3 G4:0.5 C5:0.5 E5:2 G4:0.5 C5:0.5 E5:2 G4:0.5 C5:0.5 E5:4 C5:0.75 E5:0.25 G5:3 E5 C5 G4:3 G4:0.75 G4:0.25 C5:4'},
 };
 
 // ---------- settings ----------
-const S = {instrument:'trumpet', inst:2, tol:40, sens:3, hold:0.35, bpm:90, chime:true, A4:440};
+const S = {click:true, instrument:'trumpet', inst:2, tol:40, sens:3, hold:0.35, bpm:90, chime:true, A4:440};
 const store = {
   get(k){ try{ return JSON.parse(localStorage.getItem('tc_'+k)); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem('tc_'+k, JSON.stringify(v)); }catch(e){} }
@@ -419,7 +441,7 @@ function detect(b, sr){
   return {f:sr/t, rms};
 }
 
-let hist=[], silent=0;
+let hist=[], silent=0, lastDet=null;
 const median = a => { const s=[...a].sort((x,y)=>x-y); return s[Math.floor(s.length/2)]; };
 function loop(){
   if(!running) return;
@@ -430,14 +452,15 @@ function loop(){
   if(now < ignoreUntil){ hist=[]; showSilence('🔊 Playing sound…'); requestAnimationFrame(loop); return; }
   if(r.f>0){ hist.push(r.f); if(hist.length>5) hist.shift(); silent=0; }
   else if(++silent>=3) hist=[];
-  if(!hist.length){ showSilence('Waiting for sound…'); tick(null, r.rms, now); tunerTick(null, now); }
+  if(!hist.length){ lastDet=null; showSilence('Waiting for sound…'); if(P.mode==='step') tick(null, r.rms, now); tunerTick(null, now); }
   else{
     const f=median(hist);
     const concert = 69+12*Math.log2(f/S.A4);
     const written = concert + off();
+    lastDet=written;
     showLive(written, concert, f);
     tunerTick(concert, now);
-    tick(written, r.rms, now);
+    if(P.mode==='step') tick(written, r.rms, now);
   }
   requestAnimationFrame(loop);
 }
@@ -484,7 +507,7 @@ function tunerTick(concert, now){
 }
 
 // ---------- practice ----------
-const P = {key:'scaleUp', notes:[], idx:0, holdStart:0, needRelease:false, lastMidi:null, peak:0, startT:0, misses:0, done:false};
+const P = {mode:'step', meta:{}, key:'scaleUp', notes:[], idx:0, holdStart:0, needRelease:false, lastMidi:null, peak:0, startT:0, misses:0, done:false};
 const cur = () => P.notes[Math.min(P.idx, P.notes.length-1)] || {label:'–',midi:60,step:28,acc:0};
 const fingerWords = m => isGtr() ? gWords(m) : FING[m]==null ? '' : FING[m]==='0' ? 'open (no valves)' : 'valves '+FING[m].split('').join(' + ');
 
@@ -492,6 +515,9 @@ function loadSong(key){
   P.key=key; store.set('song', key);
   const src = key==='custom' ? (store.get('custom')||{name:'My Song',notes:''}) : SONGS[key];
   P.notes = parseNotes(src.notes).notes;
+  P.meta = key==='custom' ? {} : {ts:src.ts||0, pickup:src.pickup||0};
+  if(PL.on) stopPlay();
+  resetPlay();
   restart();
 }
 function restart(){
@@ -503,7 +529,7 @@ function renderTarget(){
   if(!P.notes.length){
     $('tName').textContent='–'; $('staff').innerHTML=''; $('valves').innerHTML=''; $('lipHint').textContent='';
     $('strip').innerHTML=''; $('progress').textContent='';
-    setFeedback('No notes yet — open “Add your own song” below.', 'bad'); return;
+    setFeedback('No notes yet — open “Add your own song” below.', 'bad'); renderSheet(); return;
   }
   const n=cur();
   $('tName').textContent=n.label;
@@ -516,6 +542,7 @@ function renderTarget(){
   $('progress').textContent = `Note ${Math.min(P.idx+1,P.notes.length)} of ${P.notes.length}`;
   if(running && !P.done) setFeedback('Play '+n.label+' — '+fingerWords(n.midi), '');
   setHold(0);
+  renderSheet();
 }
 function setFeedback(t, cls){ const f=$('feedback'); if(f.textContent!==t) f.textContent=t; f.className='feedback '+(cls||''); }
 function setHold(p){ $('hold').style.width = Math.max(0,Math.min(1,p))*100+'%'; }
@@ -562,7 +589,7 @@ function hit(t){
     document.querySelectorAll('#strip .chip').forEach(c=>c.className='chip done');
     const secs=Math.round((performance.now()-P.startT)/1000);
     $('doneStats').textContent = `${P.notes.length} notes in ${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` + (P.misses? ` · ${P.misses} wrong-note moment${P.misses>1?'s':''}`:' · zero wrong notes 🔥');
-    $('doneCard').style.display='block';
+    $('doneCard').style.display='block'; renderSheet();
     setFeedback('Done! Tap ↺ Restart to go again, or pick another song.', 'good');
     return;
   }
@@ -598,6 +625,219 @@ function stopListen(){
 }
 function hear(m){ const c=getCtx(); tone(m - off(), c.currentTime+0.02, 1.0); ignoreUntil=performance.now()+1250; }
 
+// ---------- sheet music ----------
+function renderSheet(){
+  const el=$('sheet');
+  if(!P.notes.length){ el.innerHTML='<div class="help" style="padding:14px;color:#555">No notes yet.</div>'; return; }
+  const W=Math.max(300, Math.floor(el.clientWidth||340)), clefW=40, ppb=26, MIN=19, sysH=122, top=34, BARW=10;
+  const ts=(P.meta&&P.meta.ts)||0, pu=ts?((P.meta.pickup)||0):0, grp=ts||4;
+  // group notes into measures
+  const meas=[]; let b=0;
+  P.notes.forEach((n,i)=>{ const mi = pu ? (b<pu-1e-6 ? 0 : Math.floor((b-pu+1e-6)/grp)+1) : Math.floor((b+1e-6)/grp);
+    (meas[mi]=meas[mi]||[]).push(i); b+=n.beats; });
+  const M=meas.filter(Boolean);
+  const wOf=n=>Math.max(MIN, n.beats*ppb);
+  const mW=m=>m.reduce((a,i)=>a+wOf(P.notes[i]),0)+BARW;
+  // pack measures into systems
+  const systems=[[]]; let used=0; const avail=W-clefW-20;
+  M.forEach(m=>{ const w=mW(m); if(used+w>avail && systems[systems.length-1].length){ systems.push([]); used=0; } systems[systems.length-1].push(m); used+=w; });
+  const curIdx = P.mode==='play' ? PL.curIdx : P.idx;
+  const sysOfNote=[]; let g='';
+  systems.forEach((sys,j)=>{
+    const y0=j*sysH, yy=st=>y0+top+40-(st-30)*5;
+    for(let k=0;k<5;k++) g+=`<line x1="6" x2="${W-6}" y1="${y0+top+k*10}" y2="${y0+top+k*10}" stroke="#333" stroke-width="1"/>`;
+    g+=`<text x="4" y="${y0+top+51}" font-size="60" fill="#222" font-family="'Noto Music','Apple Symbols','Segoe UI Symbol',serif">𝄞</text>`;
+    let x=clefW+10;
+    sys.forEach((m,mi)=>{
+      m.forEach(i=>{
+        const n=P.notes[i], cx=x+8, y=yy(n.step); sysOfNote[i]=j;
+        let col='#111';
+        if(P.mode==='play'){ if(PL.state[i]===1) col='#1f9d6a'; else if(PL.state[i]===2) col='#d0453f'; }
+        else if(i<P.idx || P.done) col='#1f9d6a';
+        let h=`<g data-i="${i}" style="cursor:pointer">`;
+        if(i===curIdx && !(P.mode==='step'&&P.done)){ h+=`<rect x="${cx-12}" y="${y0+3}" width="24" height="${sysH-8}" rx="8" fill="#f2b33d" opacity=".4"/>`; col='#8a5a00'; }
+        else h+=`<rect x="${cx-12}" y="${y0+3}" width="24" height="${sysH-8}" fill="transparent"/>`;
+        for(let st=28;st>=n.step;st-=2) h+=`<line x1="${cx-10}" x2="${cx+10}" y1="${yy(st)}" y2="${yy(st)}" stroke="#333" stroke-width="1"/>`;
+        for(let st=40;st<=n.step;st+=2) h+=`<line x1="${cx-10}" x2="${cx+10}" y1="${yy(st)}" y2="${yy(st)}" stroke="#333" stroke-width="1"/>`;
+        if(n.acc) h+=`<text x="${cx-19}" y="${y+5}" font-size="15" fill="${col}">${n.acc>0?'♯':'♭'}</text>`;
+        const hollow=n.beats>=2;
+        h+=`<ellipse cx="${cx}" cy="${y}" rx="6" ry="4.4" transform="rotate(-20 ${cx} ${y})" fill="${hollow?'none':col}" stroke="${col}" stroke-width="${hollow?1.8:1}"/>`;
+        if(n.beats<4){ const up=n.step<34, sx=up?cx+5.6:cx-5.6, ey=up?y-30:y+30;
+          h+=`<line x1="${sx}" x2="${sx}" y1="${y}" y2="${ey}" stroke="${col}" stroke-width="1.4"/>`;
+          if(n.beats<1) h+= up ? `<path d="M${sx} ${ey} q8 8 6 18" fill="none" stroke="${col}" stroke-width="2"/>` : `<path d="M${sx} ${ey} q8 -8 6 -18" fill="none" stroke="${col}" stroke-width="2"/>`;
+          if(n.beats<0.5) h+= up ? `<path d="M${sx} ${ey+7} q8 8 6 18" fill="none" stroke="${col}" stroke-width="2"/>` : `<path d="M${sx} ${ey-7} q8 -8 6 -18" fill="none" stroke="${col}" stroke-width="2"/>`;
+        }
+        if([3,1.5,0.75].includes(n.beats)) h+=`<circle cx="${cx+10}" cy="${y-(n.step%2===0?3:0)}" r="1.8" fill="${col}"/>`;
+        h+=`<text x="${cx}" y="${y0+sysH-5}" font-size="10" text-anchor="middle" fill="${col}" font-weight="${i===curIdx?700:400}">${n.label}</text></g>`;
+        g+=h; x+=wOf(n);
+      });
+      const last = j===systems.length-1 && mi===sys.length-1;
+      if(last) g+=`<line x1="${x}" x2="${x}" y1="${y0+top}" y2="${y0+top+40}" stroke="#333" stroke-width="1"/><line x1="${x+4}" x2="${x+4}" y1="${y0+top}" y2="${y0+top+40}" stroke="#333" stroke-width="3"/>`;
+      else if(ts && mi<sys.length-1) g+=`<line x1="${x+2}" x2="${x+2}" y1="${y0+top}" y2="${y0+top+40}" stroke="#333" stroke-width="1.2"/>`;
+      x+=BARW;
+    });
+  });
+  const H=systems.length*sysH+4;
+  el.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${g}</svg>`;
+  const ci=Math.max(0,Math.min(curIdx<0?0:curIdx,P.notes.length-1)), target=(sysOfNote[ci]||0)*sysH;
+  if(Math.abs(el.scrollTop-target)>sysH/2) el.scrollTop=Math.max(0,target);
+}
+$('sheet').addEventListener('click',e=>{ const gEl=e.target.closest('g[data-i]'); if(!gEl||P.mode!=='step'||playing) return;
+  P.idx=+gEl.dataset.i; P.done=false; $('doneCard').style.display='none'; P.needRelease=false; renderTarget(); });
+
+// ---------- play-along (Yousician style) ----------
+const PL={on:false,t0:0,times:[],state:[],matched:[],curIdx:-1,trail:[],combo:0,best:0,bus:null,raf:0,lastT:0,dirty:false,spb:0.66};
+let noiseBuf=null;
+function resetPlay(){
+  PL.state=P.notes.map(()=>0); PL.matched=P.notes.map(()=>0); PL.curIdx=-1; PL.combo=0; PL.best=0; PL.trail=[];
+  $('playDone').style.display='none';
+  layoutTimes(); drawHW(-PL.spb*0.6);
+}
+function layoutTimes(){ PL.spb=60/S.bpm; let b=0; PL.times=P.notes.map(n=>{ const st=b*PL.spb; b+=n.beats; return {s:st,e:b*PL.spb}; }); PL.total=b*PL.spb; PL.totalBeats=b; }
+function clickAt(t, accent){
+  const c=getCtx();
+  if(!noiseBuf){ noiseBuf=c.createBuffer(1, Math.floor(c.sampleRate*0.03), c.sampleRate); const d=noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3); }
+  const src=c.createBufferSource(), bp=c.createBiquadFilter(), g=c.createGain();
+  src.buffer=noiseBuf; bp.type='bandpass'; bp.frequency.value=accent?3200:2200; bp.Q.value=1.5; g.gain.value=accent?0.9:0.55;
+  src.connect(bp); bp.connect(g); g.connect(PL.bus); src.start(t);
+}
+async function togglePlay(){
+  if(PL.on){ stopPlay(); return; }
+  if(!P.notes.length) return;
+  if(!running){ await startMic(); if(!running) return; }
+  if(playing) stopListen();
+  const c=getCtx();
+  resetPlay();
+  const count=(P.meta&&P.meta.ts)||4;
+  PL.t0=c.currentTime+0.35+count*PL.spb;
+  PL.bus=c.createGain(); PL.bus.connect(c.destination);
+  const ts=(P.meta&&P.meta.ts)||4, pu=(P.meta&&P.meta.pickup)||0;
+  const beatsTotal=Math.ceil(PL.totalBeats)+count;
+  for(let k=0;k<beatsTotal;k++){
+    const beat=k-count; if(beat>=0 && !S.click) break;
+    clickAt(PL.t0+beat*PL.spb, beat<0 ? k===0 : ((((beat-pu)%ts)+ts)%ts)===0);
+  }
+  PL.on=true; PL.lastT=c.currentTime-PL.t0;
+  $('playBtn').textContent='■ Stop';
+  $('playMsg').textContent='Get ready…'; $('playMsg').className='feedback';
+  PL.raf=requestAnimationFrame(playFrame);
+}
+function stopPlay(){
+  PL.on=false; cancelAnimationFrame(PL.raf);
+  if(PL.bus){ try{ PL.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.01); const b=PL.bus; setTimeout(()=>b.disconnect(),150); }catch(e){} PL.bus=null; }
+  $('playBtn').textContent='▶ Play';
+}
+function playFrame(){
+  if(!PL.on) return;
+  const t=ctx.currentTime-PL.t0, dt=Math.max(0,Math.min(0.1,t-PL.lastT)); PL.lastT=t;
+  const tolS=S.tol/100, LATE=0.15, EARLY=0.08;
+  let cur=-1;
+  P.notes.forEach((n,i)=>{
+    const w=PL.times[i];
+    if(t>=w.s && t<w.e && cur<0) cur=i;
+    if(PL.state[i]!==0) return;
+    if(t>=w.s-EARLY && t<=w.e+LATE && lastDet!=null && Math.abs(lastDet-n.midi)<=tolS){
+      PL.matched[i]+=dt;
+      if(PL.matched[i] >= Math.min(0.3*(w.e-w.s), 0.2)){ PL.state[i]=1; PL.combo++; PL.best=Math.max(PL.best,PL.combo); PL.dirty=true; }
+    } else if(t>w.e+LATE){ PL.state[i]=2; PL.combo=0; PL.dirty=true; }
+  });
+  if(cur!==PL.curIdx){ PL.curIdx=cur; PL.dirty=true; }
+  if(lastDet!=null) PL.trail.push({t, m:lastDet});
+  while(PL.trail.length && PL.trail[0].t < t-2.5) PL.trail.shift();
+  // coach message
+  const m=$('playMsg');
+  if(t<0){ m.textContent='Count-in… '+Math.ceil(-t/PL.spb); m.className='feedback'; }
+  else if(cur>=0){ const n=P.notes[cur], ok=PL.state[cur]===1;
+    m.textContent = ok ? `✓ ${n.label}!` + (PL.combo>2?`  🔥 ${PL.combo} in a row`:'') : `Now: ${n.label} — ${fingerWords(n.midi)}`;
+    m.className='feedback '+(ok?'good':''); }
+  if(PL.dirty){ PL.dirty=false; renderSheet(); }
+  drawHW(t);
+  if(t>PL.total+LATE+0.4){ finishPlay(); return; }
+  PL.raf=requestAnimationFrame(playFrame);
+}
+function finishPlay(){
+  stopPlay(); PL.curIdx=-1; renderSheet();
+  const hits=PL.state.filter(x=>x===1).length, n=P.notes.length, pct=Math.round(hits/n*100);
+  $('pStars').textContent = pct>=90?'★★★':pct>=70?'★★☆':pct>=40?'★☆☆':'☆☆☆';
+  $('pScore').textContent = pct+'% — '+(pct>=90?'Amazing!':pct>=70?'Nice job!':pct>=40?'Getting there!':'Try it slower (−)');
+  $('pStats').textContent = `${hits} of ${n} notes · best streak ${PL.best} · ${S.bpm} BPM`;
+  $('playDone').style.display='block';
+  $('playMsg').textContent = pct>=90 ? 'Crushed it. Try bumping the tempo up (+).' : 'Red notes on the sheet are the ones you missed. Press ▶ to go again.';
+  $('playMsg').className='feedback '+(pct>=70?'good':'bad');
+}
+function laneLabel(m){
+  if(isGtr()){ const p=gpos(m); return p? ['E','A','D','G','B','e'][p.s]+(p.f===0?' open':' fr'+p.f) : ''; }
+  const f=FING[m]; return f==null?'':f==='0'?'open':f.split('').join('·');
+}
+function drawHW(t){
+  const cv=$('hw'); if(!cv || $('playUI').style.display==='none') return;
+  const dpr=window.devicePixelRatio||1, W=cv.clientWidth||340, H=cv.clientHeight||290;
+  if(cv.width!==Math.round(W*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
+  const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H);
+  const lanes=[...new Set(P.notes.map(n=>n.midi))].sort((a,b)=>a-b);
+  if(!lanes.length) return;
+  const LW=62, top=12, laneH=Math.min(38,(H-24)/lanes.length), area=lanes.length*laneH, y0=top+(H-24-area)/2;
+  const laneY=i=>y0+(lanes.length-1-i)*laneH+laneH/2;
+  const yFor=mf=>{ if(mf<=lanes[0]) return laneY(0)+Math.min(laneH*0.6,(lanes[0]-mf)*laneH*0.5);
+    if(mf>=lanes[lanes.length-1]) return laneY(lanes.length-1)-Math.min(laneH*0.6,(mf-lanes[lanes.length-1])*laneH*0.5);
+    for(let i=0;i<lanes.length-1;i++) if(mf>=lanes[i]&&mf<=lanes[i+1]) return laneY(i)+(laneY(i+1)-laneY(i))*(mf-lanes[i])/(lanes[i+1]-lanes[i]); };
+  const px=LW+46, pps=72/PL.spb;
+  const X=sec=>px+(sec-t)*pps;
+  // lanes
+  lanes.forEach((m,i)=>{ c.fillStyle=i%2?'#121a38':'#0f1633'; c.fillRect(LW,laneY(i)-laneH/2,W-LW,laneH); });
+  // beat & bar lines
+  const ts=(P.meta&&P.meta.ts)||0, pu=(P.meta&&P.meta.pickup)||0;
+  const b0=Math.floor((t-(px-LW)/pps)/PL.spb)-1, b1=Math.ceil((t+(W-px)/pps)/PL.spb)+1;
+  for(let k=Math.max(0,b0);k<=Math.min(b1,Math.ceil(PL.totalBeats));k++){
+    const x=X(k*PL.spb); const bar=ts && (((k-pu)%ts)+ts)%ts===0;
+    c.strokeStyle=bar?'rgba(147,160,196,.45)':'rgba(147,160,196,.13)'; c.lineWidth=bar?1.5:1;
+    c.beginPath(); c.moveTo(x,y0-4); c.lineTo(x,y0+area+4); c.stroke();
+  }
+  // notes
+  c.font='700 13px "Space Grotesk",system-ui,sans-serif'; c.textBaseline='middle';
+  P.notes.forEach((n,i)=>{
+    const w=PL.times[i]; if(!w) return; const x0=X(w.s)+1.5, x1=X(w.e)-1.5; if(x1<LW||x0>W) return;
+    const li=lanes.indexOf(n.midi), y=laneY(li), h=laneH*0.74;
+    const st=PL.state[i], active=t>=w.s&&t<w.e;
+    c.fillStyle= st===1?'#2fbf86': st===2?'#7a2e3a': active?'#f2b33d':'#4b63d8';
+    const xa=Math.max(LW,x0), r=Math.min(8,h/2);
+    c.beginPath(); c.roundRect ? c.roundRect(xa,y-h/2,Math.max(4,x1-xa),h,r) : c.rect(xa,y-h/2,Math.max(4,x1-xa),h); c.fill();
+    if(active&&st!==1){ c.strokeStyle='#ffd57a'; c.lineWidth=2; c.stroke(); }
+    if(x1-xa>30){ c.fillStyle= active&&st!==1?'#1a1200':'#fff'; c.fillText(n.label, xa+7, y+0.5); }
+  });
+  // label column
+  c.fillStyle='#0b1020'; c.fillRect(0,0,LW,H);
+  lanes.forEach((m,i)=>{ const y=laneY(i); c.fillStyle='#eef1fb'; c.font='700 12px "Space Grotesk",system-ui,sans-serif'; c.fillText(nameOf(m),6,y-6);
+    c.fillStyle='#f2b33d'; c.font='500 10px "Space Grotesk",system-ui,sans-serif'; c.fillText(laneLabel(m),6,y+7); });
+  // playhead
+  c.strokeStyle='#f2b33d'; c.lineWidth=3; c.shadowColor='#f2b33d'; c.shadowBlur=10;
+  c.beginPath(); c.moveTo(px,y0-8); c.lineTo(px,y0+area+8); c.stroke(); c.shadowBlur=0;
+  // your pitch trail
+  PL.trail.forEach(p=>{ const x=px-(t-p.t)*pps; if(x<LW) return; c.fillStyle='rgba(255,255,255,.55)'; c.beginPath(); c.arc(x,yFor(p.m),2.2,0,7); c.fill(); });
+  if(lastDet!=null && PL.on){ const y=yFor(lastDet), cn=PL.curIdx>=0?P.notes[PL.curIdx]:null, ok=cn&&Math.abs(lastDet-cn.midi)<=S.tol/100;
+    c.fillStyle=ok?'#3ddc97':'#ff6b6b'; c.beginPath(); c.arc(px,y,7,0,7); c.fill(); c.strokeStyle='#fff'; c.lineWidth=2; c.stroke(); }
+  // count-in overlay
+  if(PL.on && t<0){ c.fillStyle='rgba(11,16,32,.55)'; c.fillRect(LW,0,W-LW,H); c.fillStyle='#ffd57a'; c.font='700 72px "Space Grotesk",system-ui,sans-serif'; c.textAlign='center'; c.fillText(String(Math.ceil(-t/PL.spb)),(W+LW)/2,H/2); c.textAlign='left'; }
+  // HUD
+  if(PL.on && t>=0){ const hits=PL.state.filter(x=>x===1).length; c.fillStyle='rgba(11,16,32,.75)'; c.fillRect(W-118,6,112,24); c.fillStyle='#eef1fb'; c.font='600 12px "Space Grotesk",system-ui,sans-serif'; c.fillText(`✓ ${hits}/${P.notes.length}  🔥${PL.combo}`, W-110, 18); }
+}
+function setMode(m){
+  if(PL.on) stopPlay(); if(playing) stopListen();
+  P.mode=m; store.set('mode',m);
+  $('modeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===m));
+  $('stepUI').style.display = m==='step'?'':'none';
+  $('playUI').style.display = m==='play'?'':'none';
+  $('sheetHint').textContent = m==='step' ? 'tap a note to jump' : 'green hit · red missed';
+  resetPlay(); renderTarget();
+}
+function setBpm(v){ S.bpm=Math.max(40,Math.min(160,v)); saveSettings(); $('bpmShow').textContent=S.bpm+' BPM'; $('bpm').value=S.bpm; $('bpmV').textContent=S.bpm; if(!PL.on){ layoutTimes(); drawHW(-PL.spb*0.6); } }
+$('modeSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) setMode(b.dataset.v); });
+$('playBtn').onclick=togglePlay;
+$('bpmDn').onclick=()=>setBpm(S.bpm-5);
+$('bpmUp').onclick=()=>setBpm(S.bpm+5);
+$('clickOn').checked=S.click; $('clickOn').onchange=e=>{ S.click=e.target.checked; saveSettings(); };
+window.addEventListener('resize',()=>{ renderSheet(); if(!PL.on) drawHW(-PL.spb*0.6); });
+
 // ---------- UI wiring ----------
 function buildSongSelect(){
   const custom = store.get('custom');
@@ -630,7 +870,7 @@ function initSettings(){
     el.oninput=()=>{ S[key]=parse(el.value); $(id+'V').textContent=fmt(S[key]); saveSettings(); }; };
   bind('tol','tol',v=>'±'+v);
   bind('sens','sens',v=>['lowest','low','medium','high','highest'][v-1]);
-  bind('bpm','bpm',v=>v);
+  bind('bpm','bpm',v=>v); $('bpm').addEventListener('input',()=>setBpm(S.bpm));
   const h=$('holdT'); h.value=S.hold; $('holdV').textContent=(+S.hold).toFixed(2);
   h.oninput=()=>{ S.hold=+h.value; $('holdV').textContent=S.hold.toFixed(2); saveSettings(); };
   $('chimeOn').checked=S.chime; $('chimeOn').onchange=e=>{ S.chime=e.target.checked; saveSettings(); };
@@ -674,6 +914,7 @@ $('instrSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); 
 applyInstrument(); initSettings();
 const startKey = store.get('song'); const k = (startKey && ((SONGS[startKey] && (!SONGS[startKey].only||SONGS[startKey].only===S.instrument))||startKey==='custom')) ? startKey : 'scaleUp';
 $('songSel').value=k; loadSong(k);
+setMode(store.get('mode')==='play'?'play':'step'); $('bpmShow').textContent=S.bpm+' BPM';
 })();
 </script>
 </body>
