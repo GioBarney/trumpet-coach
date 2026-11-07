@@ -160,7 +160,7 @@ code{background:var(--panel2);padding:1px 5px;border-radius:5px}
       <canvas id="hw"></canvas>
       <div class="row" style="margin-top:10px;justify-content:space-between">
         <button class="btn primary" id="playBtn">▶ Play</button>
-        <div class="tempo"><button class="btn small" id="bpmDn">−</button><span id="bpmShow">90 BPM</span><button class="btn small" id="bpmUp">+</button></div>
+        <div class="tempo"><button class="btn small" id="bpmDn">−</button><span id="bpmShow">90 BPM</span><button class="btn small" id="bpmUp">+</button><button class="btn small" id="bpmReset" title="Back to this song's tempo" style="display:none">↺</button></div>
         <label style="font-size:14px"><input type="checkbox" id="clickOn" checked> Metronome</label>
       </div>
       <div class="feedback" id="playMsg">Press ▶ Play. You get a count-in, then play each note as it hits the gold line.</div>
@@ -235,7 +235,7 @@ code{background:var(--panel2);padding:1px 5px;border-radius:5px}
         <input type="range" id="holdT" min="0.15" max="1.0" step="0.05" value="0.35">
       </div>
       <div>
-        <label>Tempo for “Listen”: <b id="bpmV">90</b> BPM</label>
+        <label>Tempo for this song: <b id="bpmV">90</b> BPM</label>
         <input type="range" id="bpm" min="50" max="140" step="5" value="90">
       </div>
       <div class="row"><label style="margin:0"><input type="checkbox" id="chimeOn" checked> Success chime</label></div>
@@ -257,36 +257,36 @@ const SPELL = {54:'F#3',55:'G3',56:'G#3',57:'A3',58:'Bb3',59:'B3',60:'C4',61:'C#
 
 const SONGS = {
   // Warm-ups
-  longTones: {ts:4, pickup:0, only:'trumpet', g:'🔥 Warm-ups (start here)', name:'Comeback long tones', notes:'C4:4 D4:4 E4:4 F4:4 G4:4 F4:4 E4:4 D4:4 C4:4'},
-  gHighE:    {ts:4, pickup:0, only:'guitar', g:'🔥 Warm-ups (start here)', name:'First notes: high E string (open, 1, 3)', notes:'E4:2 F4:2 G4:2 F4:2 E4:2 F4:2 G4:4'},
-  gB:        {ts:4, pickup:0, only:'guitar', g:'🔥 Warm-ups (start here)', name:'B string: B, C, D', notes:'B3:2 C4:2 D4:2 C4:2 B3:2 C4:2 D4:4'},
-  gBoth:     {only:'guitar', g:'🔥 Warm-ups (start here)', name:'B + high E strings together', notes:'B3 C4 D4 E4 F4 G4:2 G4 F4 E4 D4 C4 B3:2'},
-  slurs:     {ts:4, pickup:0, only:'trumpet', g:'🔥 Warm-ups (start here)', name:'Lip slurs (same valves, change the buzz)', notes:'C4:2 G4:2 C4:4 B3:2 F#4:2 B3:4 Bb3:2 F4:2 Bb3:4 C4:2 G4:2 C5:2 G4:2 C4:4'},
-  scaleUp:   {ts:4, pickup:0, g:'🔥 Warm-ups (start here)', name:'C Major Scale — up', notes:'C4:2 D4:2 E4:2 F4:2 G4:2 A4:2 B4:2 C5:4'},
-  scaleBoth: {ts:4, pickup:0, g:'🔥 Warm-ups (start here)', name:'C Major Scale — up & down', notes:'C4:2 D4:2 E4:2 F4:2 G4:2 A4:2 B4:2 C5:2 B4:2 A4:2 G4:2 F4:2 E4:2 D4:2 C4:4'},
+  longTones: {bpm:60, ts:4, pickup:0, only:'trumpet', g:'🔥 Warm-ups (start here)', name:'Comeback long tones', notes:'C4:4 D4:4 E4:4 F4:4 G4:4 F4:4 E4:4 D4:4 C4:4'},
+  gHighE:    {bpm:70, ts:4, pickup:0, only:'guitar', g:'🔥 Warm-ups (start here)', name:'First notes: high E string (open, 1, 3)', notes:'E4:2 F4:2 G4:2 F4:2 E4:2 F4:2 G4:4'},
+  gB:        {bpm:70, ts:4, pickup:0, only:'guitar', g:'🔥 Warm-ups (start here)', name:'B string: B, C, D', notes:'B3:2 C4:2 D4:2 C4:2 B3:2 C4:2 D4:4'},
+  gBoth:     {bpm:70, only:'guitar', g:'🔥 Warm-ups (start here)', name:'B + high E strings together', notes:'B3 C4 D4 E4 F4 G4:2 G4 F4 E4 D4 C4 B3:2'},
+  slurs:     {bpm:60, ts:4, pickup:0, only:'trumpet', g:'🔥 Warm-ups (start here)', name:'Lip slurs (same valves, change the buzz)', notes:'C4:2 G4:2 C4:4 B3:2 F#4:2 B3:4 Bb3:2 F4:2 Bb3:4 C4:2 G4:2 C5:2 G4:2 C4:4'},
+  scaleUp:   {bpm:70, ts:4, pickup:0, g:'🔥 Warm-ups (start here)', name:'C Major Scale — up', notes:'C4:2 D4:2 E4:2 F4:2 G4:2 A4:2 B4:2 C5:4'},
+  scaleBoth: {bpm:70, ts:4, pickup:0, g:'🔥 Warm-ups (start here)', name:'C Major Scale — up & down', notes:'C4:2 D4:2 E4:2 F4:2 G4:2 A4:2 B4:2 C5:2 B4:2 A4:2 G4:2 F4:2 E4:2 D4:2 C4:4'},
   // Easy
-  hcb:       {ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Hot Cross Buns', notes:'E4 D4 C4:2 E4 D4 C4:2 C4:0.5 C4:0.5 C4:0.5 C4:0.5 D4:0.5 D4:0.5 D4:0.5 D4:0.5 E4 D4 C4:2'},
-  mary:      {ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Mary Had a Little Lamb', notes:'E4 D4 C4 D4 E4 E4 E4:2 D4 D4 D4:2 E4 G4 G4:2 E4 D4 C4 D4 E4 E4 E4 E4 D4 D4 E4 D4 C4:4'},
-  twinkle:   {ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Twinkle Twinkle Little Star', notes:'C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2 G4 G4 F4 F4 E4 E4 D4:2 G4 G4 F4 F4 E4 E4 D4:2 C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2'},
-  ode:       {ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Ode to Joy (Beethoven)', notes:'E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4:1.5 D4:0.5 D4:2 E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 D4:1.5 C4:0.5 C4:2'},
-  jingle:    {ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Jingle Bells', notes:'E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4:1.5 D4:0.5 E4:4 F4 F4 F4:1.5 F4:0.5 F4 E4 E4 E4:0.5 E4:0.5 E4 D4 D4 E4 D4:2 G4:2 E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4:1.5 D4:0.5 E4:4 F4 F4 F4 F4 F4 E4 E4 E4:0.5 E4:0.5 G4 G4 F4 D4 C4:4'},
-  saints:    {g:'⭐ Easy (C to G)', name:'When the Saints Go Marching In', notes:'C4 E4 F4 G4:4 C4 E4 F4 G4:4 C4 E4 F4 G4:2 E4:2 C4:2 E4:2 D4:4 E4 E4 D4 C4:3 C4 E4:2 G4:2 G4 F4:3 E4 F4 G4:2 E4:2 C4:2 D4:2 C4:4'},
+  hcb:       {bpm:90, ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Hot Cross Buns', notes:'E4 D4 C4:2 E4 D4 C4:2 C4:0.5 C4:0.5 C4:0.5 C4:0.5 D4:0.5 D4:0.5 D4:0.5 D4:0.5 E4 D4 C4:2'},
+  mary:      {bpm:100, ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Mary Had a Little Lamb', notes:'E4 D4 C4 D4 E4 E4 E4:2 D4 D4 D4:2 E4 G4 G4:2 E4 D4 C4 D4 E4 E4 E4 E4 D4 D4 E4 D4 C4:4'},
+  twinkle:   {bpm:90, ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Twinkle Twinkle Little Star', notes:'C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2 G4 G4 F4 F4 E4 E4 D4:2 G4 G4 F4 F4 E4 E4 D4:2 C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2'},
+  ode:       {bpm:100, ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Ode to Joy (Beethoven)', notes:'E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4:1.5 D4:0.5 D4:2 E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 D4:1.5 C4:0.5 C4:2'},
+  jingle:    {bpm:110, ts:4, pickup:0, g:'⭐ Easy (C to G)', name:'Jingle Bells', notes:'E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4:1.5 D4:0.5 E4:4 F4 F4 F4:1.5 F4:0.5 F4 E4 E4 E4:0.5 E4:0.5 E4 D4 D4 E4 D4:2 G4:2 E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4:1.5 D4:0.5 E4:4 F4 F4 F4 F4 F4 E4 E4 E4:0.5 E4:0.5 G4 G4 F4 D4 C4:4'},
+  saints:    {bpm:100, g:'⭐ Easy (C to G)', name:'When the Saints Go Marching In', notes:'C4 E4 F4 G4:4 C4 E4 F4 G4:4 C4 E4 F4 G4:2 E4:2 C4:2 E4:2 D4:4 E4 E4 D4 C4:3 C4 E4:2 G4:2 G4 F4:3 E4 F4 G4:2 E4:2 C4:2 D4:2 C4:4'},
   // Medium
-  bday:      {ts:3, pickup:1, g:'🎵 Medium', name:'Happy Birthday', notes:'C4:0.75 C4:0.25 D4 C4 F4 E4:2 C4:0.75 C4:0.25 D4 C4 G4 F4:2 C4:0.75 C4:0.25 C5 A4 F4 E4 D4:2 Bb4:0.75 Bb4:0.25 A4 F4 G4 F4:2'},
-  susanna:   {ts:4, pickup:1, g:'🎵 Medium', name:'Oh! Susanna', notes:'C4:0.5 D4:0.5 E4 G4 G4:1.5 A4:0.5 G4 E4 C4:1.5 D4:0.5 E4 E4 D4 C4 D4:3 C4:0.5 D4:0.5 E4 G4 G4:1.5 A4:0.5 G4 E4 C4:1.5 D4:0.5 E4 E4 D4 D4 C4:3'},
-  yankee:    {ts:4, pickup:0, g:'🎵 Medium', name:'Yankee Doodle', notes:'C4 C4 D4 E4 C4 E4 D4 G3 C4 C4 D4 E4 C4:2 B3:2 C4 C4 D4 E4 F4 E4 D4 C4 B3 G3 A3 B3 C4:2 C4:2'},
-  grace:     {ts:3, pickup:1, g:'🎵 Medium', name:'Amazing Grace', notes:'C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 F4:2 D4 C4:2 C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 C5:5 A4 C5:2 A4:0.5 F4:0.5 A4:2 G4 F4:2 D4 C4:2 C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 F4:3'},
-  cucaracha: {g:'🎵 Medium', name:'La Cucaracha', notes:'C4:0.5 C4:0.5 C4:0.5 F4:1.5 A4 C4:0.5 C4:0.5 C4:0.5 F4:1.5 A4:2 F4 F4:0.5 E4:0.5 E4:0.5 D4:0.5 D4:0.5 C4:2 C4:0.5 C4:0.5 C4:0.5 E4:1.5 G4 C4:0.5 C4:0.5 C4:0.5 E4:1.5 G4:2 C5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 F4:2'},
-  cancan:    {ts:4, pickup:0, g:'🎵 Medium', name:'Can-Can (Offenbach)', notes:'C4:2 D4:0.5 F4:0.5 E4:0.5 D4:0.5 G4 G4 G4:0.5 A4:0.5 E4:0.5 F4:0.5 D4 D4 D4:0.5 F4:0.5 E4:0.5 D4:0.5 C4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 F4:0.5 E4:0.5 D4:0.5 C4:2 D4:0.5 F4:0.5 E4:0.5 D4:0.5 G4 G4 G4:0.5 A4:0.5 E4:0.5 F4:0.5 D4 D4 D4:0.5 F4:0.5 E4:0.5 D4:0.5 C4 G4 C4:2'},
-  charge:    {g:'🎵 Medium', name:'Charge! (stadium fanfare)', notes:'C4:0.67 F4:0.67 A4:0.67 C5:1.5 A4:0.5 C5:3'},
-  fanfare:   {ts:4, pickup:0, g:'🎵 Medium', name:'Starship Fanfare (original by Claude)', notes:'E4 G4 C5:2 D5 C5 G4:2 A4 G4 E4 F4 G4:4 E4 G4 C5:2 D5 E5 D5:2 C5 G4 E4 D4 C4:4'},
+  bday:      {bpm:90, ts:3, pickup:1, g:'🎵 Medium', name:'Happy Birthday', notes:'C4:0.75 C4:0.25 D4 C4 F4 E4:2 C4:0.75 C4:0.25 D4 C4 G4 F4:2 C4:0.75 C4:0.25 C5 A4 F4 E4 D4:2 Bb4:0.75 Bb4:0.25 A4 F4 G4 F4:2'},
+  susanna:   {bpm:100, ts:4, pickup:1, g:'🎵 Medium', name:'Oh! Susanna', notes:'C4:0.5 D4:0.5 E4 G4 G4:1.5 A4:0.5 G4 E4 C4:1.5 D4:0.5 E4 E4 D4 C4 D4:3 C4:0.5 D4:0.5 E4 G4 G4:1.5 A4:0.5 G4 E4 C4:1.5 D4:0.5 E4 E4 D4 D4 C4:3'},
+  yankee:    {bpm:110, ts:4, pickup:0, g:'🎵 Medium', name:'Yankee Doodle', notes:'C4 C4 D4 E4 C4 E4 D4 G3 C4 C4 D4 E4 C4:2 B3:2 C4 C4 D4 E4 F4 E4 D4 C4 B3 G3 A3 B3 C4:2 C4:2'},
+  grace:     {bpm:80, ts:3, pickup:1, g:'🎵 Medium', name:'Amazing Grace', notes:'C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 F4:2 D4 C4:2 C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 C5:5 A4 C5:2 A4:0.5 F4:0.5 A4:2 G4 F4:2 D4 C4:2 C4 F4:2 A4:0.5 F4:0.5 A4:2 G4 F4:3'},
+  cucaracha: {bpm:110, g:'🎵 Medium', name:'La Cucaracha', notes:'C4:0.5 C4:0.5 C4:0.5 F4:1.5 A4 C4:0.5 C4:0.5 C4:0.5 F4:1.5 A4:2 F4 F4:0.5 E4:0.5 E4:0.5 D4:0.5 D4:0.5 C4:2 C4:0.5 C4:0.5 C4:0.5 E4:1.5 G4 C4:0.5 C4:0.5 C4:0.5 E4:1.5 G4:2 C5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 F4:2'},
+  cancan:    {bpm:120, ts:4, pickup:0, g:'🎵 Medium', name:'Can-Can (Offenbach)', notes:'C4:2 D4:0.5 F4:0.5 E4:0.5 D4:0.5 G4 G4 G4:0.5 A4:0.5 E4:0.5 F4:0.5 D4 D4 D4:0.5 F4:0.5 E4:0.5 D4:0.5 C4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 F4:0.5 E4:0.5 D4:0.5 C4:2 D4:0.5 F4:0.5 E4:0.5 D4:0.5 G4 G4 G4:0.5 A4:0.5 E4:0.5 F4:0.5 D4 D4 D4:0.5 F4:0.5 E4:0.5 D4:0.5 C4 G4 C4:2'},
+  charge:    {bpm:100, g:'🎵 Medium', name:'Charge! (stadium fanfare)', notes:'C4:0.67 F4:0.67 A4:0.67 C5:1.5 A4:0.5 C5:3'},
+  fanfare:   {bpm:100, ts:4, pickup:0, g:'🎵 Medium', name:'Starship Fanfare (original by Claude)', notes:'E4 G4 C5:2 D5 C5 G4:2 A4 G4 E4 F4 G4:4 E4 G4 C5:2 D5 E5 D5:2 C5 G4 E4 D4 C4:4'},
   // Challenge
-  mountain:  {ts:4, pickup:0, g:'🏆 Challenge', name:'In the Hall of the Mountain King (Grieg)', notes:'E4 F#4 G4 A4 B4 G4 B4:2 A#4 F#4 A#4:2 A4 F4 A4:2 E4 F#4 G4 A4 B4 G4 B4 E5 D5 B4 G4 B4 D5:4'},
-  taps:      {g:'🏆 Challenge', name:'Taps (all open notes, goes high)', notes:'G4:0.75 G4:0.25 C5:3 G4:0.75 C5:0.25 E5:3 G4:0.5 C5:0.5 E5:2 G4:0.5 C5:0.5 E5:2 G4:0.5 C5:0.5 E5:4 C5:0.75 E5:0.25 G5:3 E5 C5 G4:3 G4:0.75 G4:0.25 C5:4'},
+  mountain:  {bpm:100, ts:4, pickup:0, g:'🏆 Challenge', name:'In the Hall of the Mountain King (Grieg)', notes:'E4 F#4 G4 A4 B4 G4 B4:2 A#4 F#4 A#4:2 A4 F4 A4:2 E4 F#4 G4 A4 B4 G4 B4 E5 D5 B4 G4 B4 D5:4'},
+  taps:      {bpm:60, g:'🏆 Challenge', name:'Taps (all open notes, goes high)', notes:'G4:0.75 G4:0.25 C5:3 G4:0.75 C5:0.25 E5:3 G4:0.5 C5:0.5 E5:2 G4:0.5 C5:0.5 E5:2 G4:0.5 C5:0.5 E5:4 C5:0.75 E5:0.25 G5:3 E5 C5 G4:3 G4:0.75 G4:0.25 C5:4'},
 };
 
 // ---------- settings ----------
-const S = {click:true, instrument:'trumpet', inst:2, tol:40, sens:3, hold:0.35, bpm:90, chime:true, A4:440};
+const S = {songBpm:{}, click:true, instrument:'trumpet', inst:2, tol:40, sens:3, hold:0.35, bpm:90, chime:true, A4:440};
 const store = {
   get(k){ try{ return JSON.parse(localStorage.getItem('tc_'+k)); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem('tc_'+k, JSON.stringify(v)); }catch(e){} }
@@ -516,6 +516,7 @@ function loadSong(key){
   const src = key==='custom' ? (store.get('custom')||{name:'My Song',notes:''}) : SONGS[key];
   P.notes = parseNotes(src.notes).notes;
   P.meta = key==='custom' ? {} : {ts:src.ts||0, pickup:src.pickup||0};
+  S.bpm = (S.songBpm||{})[key] || songDefaultBpm(key); showBpm();
   if(PL.on) stopPlay();
   resetPlay();
   restart();
@@ -830,11 +831,22 @@ function setMode(m){
   $('sheetHint').textContent = m==='step' ? 'tap a note to jump' : 'green hit · red missed';
   resetPlay(); renderTarget();
 }
-function setBpm(v){ S.bpm=Math.max(40,Math.min(160,v)); saveSettings(); $('bpmShow').textContent=S.bpm+' BPM'; $('bpm').value=S.bpm; $('bpmV').textContent=S.bpm; if(!PL.on){ layoutTimes(); drawHW(-PL.spb*0.6); } }
+function songDefaultBpm(key){ return (SONGS[key]&&SONGS[key].bpm) || 90; }
+function showBpm(){
+  $('bpmShow').textContent=S.bpm+' BPM'; $('bpm').value=S.bpm; $('bpmV').textContent=S.bpm;
+  $('bpmReset').style.display = S.bpm!==songDefaultBpm(P.key) ? '' : 'none';
+}
+function setBpm(v){
+  S.bpm=Math.max(40,Math.min(160,v)); S.songBpm=S.songBpm||{};
+  if(S.bpm===songDefaultBpm(P.key)) delete S.songBpm[P.key]; else S.songBpm[P.key]=S.bpm;
+  saveSettings(); showBpm();
+  if(!PL.on){ layoutTimes(); drawHW(-PL.spb*0.6); }
+}
 $('modeSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) setMode(b.dataset.v); });
 $('playBtn').onclick=togglePlay;
 $('bpmDn').onclick=()=>setBpm(S.bpm-5);
 $('bpmUp').onclick=()=>setBpm(S.bpm+5);
+$('bpmReset').onclick=()=>setBpm(songDefaultBpm(P.key));
 $('clickOn').checked=S.click; $('clickOn').onchange=e=>{ S.click=e.target.checked; saveSettings(); };
 window.addEventListener('resize',()=>{ renderSheet(); if(!PL.on) drawHW(-PL.spb*0.6); });
 
@@ -914,7 +926,7 @@ $('instrSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); 
 applyInstrument(); initSettings();
 const startKey = store.get('song'); const k = (startKey && ((SONGS[startKey] && (!SONGS[startKey].only||SONGS[startKey].only===S.instrument))||startKey==='custom')) ? startKey : 'scaleUp';
 $('songSel').value=k; loadSong(k);
-setMode(store.get('mode')==='play'?'play':'step'); $('bpmShow').textContent=S.bpm+' BPM';
+setMode(store.get('mode')==='play'?'play':'step'); showBpm();
 })();
 </script>
 </body>
