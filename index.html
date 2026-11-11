@@ -217,7 +217,7 @@ body.focus .wrap{padding-top:8px}
     <div class="inner">
       <div class="row">
         <label class="btn small">📷 Scan photo / PDF<input type="file" id="scanFile" accept="image/*,application/pdf" hidden></label>
-        <label class="btn small">🎼 Import MusicXML<input type="file" id="xmlFile" accept=".xml,.musicxml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml" hidden></label>
+        <label class="btn small">🎼 Import MusicXML<input type="file" id="xmlFile" hidden></label>
       </div>
       <div class="help" id="scanStatus" style="margin:8px 0"></div>
       <input id="customName" class="field" placeholder="Song title">
@@ -941,8 +941,9 @@ function drawHW(t){
     const SN=['E','A','D','G','B','e'];
     lanes.forEach(i=>{ const y=laneY(i); c.fillStyle='#eef1fb'; c.font='700 15px "Space Grotesk",system-ui,sans-serif'; c.fillText(String(6-i),8,y);
       c.fillStyle='#f2b33d'; c.font='600 12px "Space Grotesk",system-ui,sans-serif'; c.fillText(SN[i],24,y); });
-  } else lanes.forEach((m,i)=>{ const y=laneY(i); c.fillStyle='#eef1fb'; c.font='700 12px "Space Grotesk",system-ui,sans-serif'; c.fillText(nameOf(m),6,y-6);
-    c.fillStyle='#f2b33d'; c.font='500 10px "Space Grotesk",system-ui,sans-serif'; c.fillText(laneLabel(m),6,y+7); });
+  } else lanes.forEach((m,i)=>{ const y=laneY(i), tight=laneH<28;
+    c.fillStyle='#eef1fb'; c.font='700 '+(tight?11:12)+'px "Space Grotesk",system-ui,sans-serif'; c.fillText(nameOf(m),6,tight?y:y-6);
+    c.fillStyle='#f2b33d'; c.font='500 10px "Space Grotesk",system-ui,sans-serif'; c.fillText(laneLabel(m), tight?6+c.measureText(nameOf(m)).width+14:6, tight?y:y+7); });
   // playhead
   c.strokeStyle='#f2b33d'; c.lineWidth=3; c.shadowColor='#f2b33d'; c.shadowBlur=10;
   c.beginPath(); c.moveTo(px,y0-8); c.lineTo(px,y0+area+8); c.stroke(); c.shadowBlur=0;
@@ -1109,24 +1110,47 @@ function importFromHash(){
 }
 
 // ---------- MusicXML import ----------
+// tiny built-in unzip (no internet needed)
+async function unzip(buf){
+  const dv=new DataView(buf); let e=buf.byteLength-22;
+  while(e>=0 && dv.getUint32(e,true)!==0x06054b50) e--;
+  if(e<0) throw new Error('That .mxl file looks damaged.');
+  const n=dv.getUint16(e+10,true); let p=dv.getUint32(e+16,true); const files={}, td=new TextDecoder();
+  for(let i=0;i<n && dv.getUint32(p,true)===0x02014b50;i++){
+    const method=dv.getUint16(p+10,true), csize=dv.getUint32(p+20,true), nl=dv.getUint16(p+28,true), xl=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true), lho=dv.getUint32(p+42,true);
+    files[td.decode(new Uint8Array(buf,p+46,nl))]={method,csize,lho}; p+=46+nl+xl+cl;
+  }
+  return { names:Object.keys(files), async text(name){
+    const f=files[name], l=f.lho, start=l+30+dv.getUint16(l+26,true)+dv.getUint16(l+28,true), data=new Uint8Array(buf,start,f.csize);
+    if(f.method===0) return td.decode(data);
+    if(typeof DecompressionStream!=='undefined'){ const out=await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer(); return td.decode(out); }
+    await loadJSZip(); const zz=await JSZip.loadAsync(buf); return zz.file(name).async('string');
+  }};
+}
 function loadJSZip(){ return window.JSZip ? Promise.resolve() : new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'; sc.onload=res; sc.onerror=()=>rej(new Error('could not load unzip helper')); document.head.appendChild(sc); }); }
 const r3 = x => Math.round(x*1000)/1000;
 function tokOf(midi, beats, preferName){ const nm = preferName || (()=>{ const sp=spellNote(midi,false); return sp.letter+(sp.acc>0?'#':sp.acc<0?'b':'')+sp.oct; })(); return nm+(Math.abs(beats-1)<1e-3?'':':'+r3(beats)); }
-async function importMusicXML(file){
+async function importMusicXML(file, wantPid){
   let text;
-  if(/\.mxl$/i.test(file.name)){
-    await loadJSZip(); const zip=await JSZip.loadAsync(file); let path=null;
-    const cont=zip.file('META-INF/container.xml');
-    if(cont){ const c=new DOMParser().parseFromString(await cont.async('string'),'application/xml'); const rf=c.querySelector('rootfile'); if(rf) path=rf.getAttribute('full-path'); }
-    if(!path) path=Object.keys(zip.files).find(n=>!n.startsWith('META-INF')&&/\.(xml|musicxml)$/i.test(n));
-    text=await zip.file(path).async('string');
-  } else text=await file.text();
+  const buf=await file.arrayBuffer(), head=new Uint8Array(buf,0,Math.min(4,buf.byteLength));
+  if(head[0]===0x50 && head[1]===0x4B){ // zipped MusicXML (.mxl)
+    const z=await unzip(buf); let path=null;
+    if(z.names.includes('META-INF/container.xml')){ const c=new DOMParser().parseFromString(await z.text('META-INF/container.xml'),'application/xml'); const rf=c.querySelector('rootfile'); if(rf) path=rf.getAttribute('full-path'); }
+    if(!path||!z.names.includes(path)) path=z.names.find(n=>!n.startsWith('META-INF')&&/\.(xml|musicxml)$/i.test(n));
+    if(!path) throw new Error('No music found inside that .mxl file.');
+    text=await z.text(path);
+  } else text=new TextDecoder().decode(buf);
+  if(!/score-partwise|score-timewise/.test(text)) throw new Error(/score-timewise/.test(text)?'':'That file isn’t MusicXML. Export as MusicXML (.mxl or .musicxml) and try again.');
   const d=new DOMParser().parseFromString(text,'application/xml');
   if(d.querySelector('parsererror')||!d.querySelector('part')) throw new Error('That file isn’t MusicXML.');
   const txt=sel=>{ const e=d.querySelector(sel); return e? e.textContent.trim() : ''; };
   const credits=[...d.querySelectorAll('credit-words')].sort((a,b)=>(+b.getAttribute('font-size')||0)-(+a.getAttribute('font-size')||0));
   const title = txt('work > work-title') || txt('movement-title') || (credits[0]? credits[0].textContent.trim() : '') || file.name.replace(/\.[^.]+$/,'');
-  const part=d.querySelector('part'), pid=part.getAttribute('id');
+  const allParts=[...d.querySelectorAll('part')];
+  const spName=id=>{ const sp=[...d.querySelectorAll('score-part')].find(x=>x.getAttribute('id')===id); return sp&&sp.querySelector('part-name')? sp.querySelector('part-name').textContent.trim() : ''; };
+  const parts=allParts.map((pt,i)=>({id:pt.getAttribute('id'), name:spName(pt.getAttribute('id'))||('Part '+(i+1)), count:pt.querySelectorAll('note > pitch').length}));
+  const part = (wantPid && allParts.find(x=>x.getAttribute('id')===wantPid)) || allParts.find(x=>x.querySelectorAll('note > pitch').length>0) || allParts[0];
+  const pid=part.getAttribute('id');
   const pname=(()=>{ const sp=[...d.querySelectorAll('score-part')].find(x=>x.getAttribute('id')===pid); return sp&&sp.querySelector('part-name')? sp.querySelector('part-name').textContent.trim() : ''; })();
   let div=1, chrom=0, octch=0, tsB=4, tsT=4, voice=null, rest=0, last=null, firstDur=0, mi=0;
   const notes=[];
@@ -1162,7 +1186,8 @@ async function importMusicXML(file){
   const tsQ=r3(tsB*4/tsT);
   const pickup = firstDur>0 && firstDur<tsQ-1e-6 ? r3(firstDur) : 0;
   const str=notes.map(n=>(n.rest? 'R'+(Math.abs(n.rest-1)<1e-3?'':':'+r3(n.rest))+' ' : '') + tokOf(n.midi+conv, n.beats, conv?null:n.name)).join(' ');
-  return {title, forInst, ts:[2,3,4,6].includes(tsQ)?tsQ:0, pickup, notes:str, partName:pname};
+  const niceTitle = title===title.toLowerCase() ? title.replace(/\b\w/g,ch=>ch.toUpperCase()) : title;
+  return {title:niceTitle, forInst, ts:[2,3,4,6].includes(tsQ)?tsQ:0, pickup, notes:str, partName:pname, parts, pid};
 }
 function fillEditor(o, how){
   editingId=null;
@@ -1170,10 +1195,17 @@ function fillEditor(o, how){
   $('customTs').value=String(o.ts||0); $('customPickup').value=o.pickup||0; $('customNotes').value=o.notes||'';
   const n=parseNotes(o.notes||'');
   $('scanStatus').innerHTML=`✓ ${how} “<b>${(o.title||'Untitled').replace(/</g,'&lt;')}</b>” — ${n.notes.length} notes${o.partName? ' ('+o.partName.replace(/</g,'&lt;')+')':''}. Check it over, then tap <b>Save & practice</b>.`+(n.bad.length? `<br><span style="color:var(--bad)">${n.bad.length} notes need fixing: ${n.bad.slice(0,5).join(', ')}</span>`:'');
+  const withNotes=(o.parts||[]).filter(x=>x.count>0);
+  if(withNotes.length>1){
+    $('scanStatus').innerHTML+=`<div style="margin-top:8px">This file has ${withNotes.length} parts — pick which one to practice:<select id="partPick" style="margin-top:6px">${(o.parts||[]).map((x,i)=>x.count?`<option value="${x.id}" ${x.id===o.pid?'selected':''}>Part ${i+1}: ${x.name.replace(/</g,'&lt;')} (${x.count} notes)</option>`:'').join('')}</select></div>`;
+    $('partPick').onchange=async ev=>{ try{ fillEditor(await importMusicXML(lastXml, ev.target.value), 'Imported'); }catch(err){ $('scanStatus').textContent=err.message; } };
+  }
 }
+let lastXml=null;
 $('xmlFile').onchange=async e=>{
   const f=e.target.files[0]; e.target.value=''; if(!f) return;
   $('scanStatus').textContent='Reading '+f.name+'…';
+  lastXml=f;
   try{ fillEditor(await importMusicXML(f), 'Imported'); }catch(err){ $('scanStatus').innerHTML='<span style="color:var(--bad)">'+err.message+'</span>'; }
 };
 
